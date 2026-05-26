@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nails Booking</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header>
+    <h1>💅 Nail Salon</h1>
+    <a href="/booking">Book Appointment</a>
+</header>
+
+<section class="container">
+
+    {% for service in services %}
+
+    <div class="card">
+
+        <img src="{{ url_for('static',
+        filename='images/' + service.image) }}">
+
+        <h2>{{ service.name }}</h2>
+
+        <p>{{ service.price }}</p>
+
+        <button onclick="showMessage()">
+            Book Now
+        </button>
+
+    </div>
+
+    {% endfor %}
+
+</section>
+
+<script src="{{ url_for('static',
+filename='js/script.js') }}"></script>
+
+</body>
+</html>
