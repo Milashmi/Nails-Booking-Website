@@ -1,0 +1,66 @@
+{#
+  The shell every admin page sits inside: the sidebar, the page title, and the
+  content block. Each admin page extends this rather than base.html directly.
+#}
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block content %}
+<div class="wide">
+  <div class="admin-shell">
+    <!-- sidebar -->
+    <aside class="admin-nav">
+      <a class="{{ 'active' if request.endpoint == 'admin.dashboard' }}"
+         href="{{ url_for('admin.dashboard') }}">
+        {{ icon.chart() }} Dashboard
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.appointments' }}"
+         href="{{ url_for('admin.appointments') }}">
+        {{ icon.calendar() }} Appointments
+        {% if pending_count %}<span class="badge-dot">{{ pending_count }}</span>{% endif %}
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.services' }}"
+         href="{{ url_for('admin.services') }}">
+        {{ icon.tag() }} Services
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.designs' }}"
+         href="{{ url_for('admin.designs') }}">
+        {{ icon.grid() }} Designs
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.colors' }}"
+         href="{{ url_for('admin.colors') }}">
+        {{ icon.palette() }} Colours
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.promos' }}"
+         href="{{ url_for('admin.promos') }}">
+        {{ icon.percent() }} Promo codes
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.schedule' }}"
+         href="{{ url_for('admin.schedule') }}">
+        {{ icon.clock() }} Closed days
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.users' }}"
+         href="{{ url_for('admin.users') }}">
+        {{ icon.users() }} Customers
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.reviews' }}"
+         href="{{ url_for('admin.reviews') }}">
+        {{ icon.star() }} Reviews
+      </a>
+    </aside>
+
+    <!-- page -->
+    <div>
+      <div class="section-head">
+        <span class="eyebrow">{% block admin_eyebrow %}Admin{% endblock %}</span>
+        <h1 class="page-h1" style="margin-bottom:6px">
+          {% block admin_title %}{% endblock %}
+        </h1>
+        {% block admin_sub %}{% endblock %}
+      </div>
+
+      {% block admin_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

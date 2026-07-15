@@ -1,0 +1,195 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Designs · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}The <em>gallery</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Upload new work, retag it, or set the surcharge the more intricate art
+    carries. Uploads are re-encoded and given a random name before they hit the
+    disk.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="spread" style="margin-bottom:20px">
+  <h2 style="font-size:22px">{{ designs|length }} designs</h2>
+  <button class="btn btn-gold" type="button" data-open-modal="add-design">
+    {{ icon.upload() }} Upload a design
+  </button>
+</div>
+
+<div class="gallery-grid stagger">
+  {% for design in designs %}
+    <article class="design-card" style="{{ 'opacity:.55' if not design.is_active }}">
+      <div class="design-media">
+        <img src="{{ url_for('static', filename=design.image_url_path) }}"
+             alt="{{ design.design_name }}" loading="lazy" />
+      </div>
+
+      <div class="design-overlay" style="transform:none;padding:34px 14px 14px">
+        <span class="design-cat">{{ design.category }}</span>
+        <h4 style="font-size:15px">{{ design.design_name }}</h4>
+
+        <div class="design-actions">
+          <button class="btn btn-soft btn-sm" type="button"
+                  data-open-modal="edit-design-{{ design.id }}">
+            {{ icon.edit() }} Edit
+          </button>
+
+          <form method="post"
+                action="{{ url_for('admin.delete_design', design_id=design.id) }}"
+                data-confirm="Delete '{{ design.design_name }}'?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button class="btn btn-danger btn-sm" type="submit">
+              {{ icon.trash() }}
+            </button>
+          </form>
+        </div>
+
+        <p class="design-extra" style="margin-top:6px">
+          {% if design.extra_price %}+{{ design.extra_price | rs }}{% else %}included{% endif %}
+          {% if not design.is_active %} · hidden{% endif %}
+        </p>
+      </div>
+    </article>
+
+    <!-- edit modal -->
+    <div class="modal hidden" id="edit-design-{{ design.id }}" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card">
+        <h3>Edit design</h3>
+
+        <img src="{{ url_for('static', filename=design.image_url_path) }}"
+             alt="" class="thumb-preview" style="max-height:180px;margin:16px auto" />
+
+        <form method="post" enctype="multipart/form-data"
+              action="{{ url_for('admin.edit_design', design_id=design.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="field">
+            <label>Name</label>
+            <input type="text" name="design_name" value="{{ design.design_name }}"
+                   required maxlength="120" />
+          </div>
+
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Category</label>
+              <select name="category">
+                {% for cat in categories %}
+                  <option value="{{ cat }}" {{ 'selected' if design.category == cat }}>
+                    {{ cat }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Surcharge (Rs.)</label>
+              <input type="number" name="extra_price" value="{{ design.extra_price }}"
+                     min="0" max="5000" step="50" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Best suited to</label>
+            <select name="service_id">
+              <option value="">, any service, </option>
+              {% for service in services %}
+                <option value="{{ service.id }}"
+                        {{ 'selected' if design.service_id == service.id }}>
+                  {{ service.service_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Replace the image (optional)</label>
+            <input type="file" name="image" accept="image/*" />
+          </div>
+
+          <label class="check">
+            <input type="checkbox" name="is_active" {{ 'checked' if design.is_active }} />
+            Show in the gallery
+          </label>
+
+          <div class="modal-actions">
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-gold" type="submit">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- upload modal -->
+<div class="modal hidden" id="add-design" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card">
+    <h3>Upload a design</h3>
+    <p class="muted">A photo of a set you've done. It goes straight into the gallery.</p>
+
+    <form method="post" enctype="multipart/form-data"
+          action="{{ url_for('admin.designs') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+      <div class="field mt">
+        <label>Photo <span class="req">*</span></label>
+        <div class="file-drop" data-file-drop>
+          {{ icon.upload() }}
+          <strong style="font-size:14px">Choose a photo</strong>
+          <p class="muted small">PNG or JPG, up to 5 MB</p>
+          <input type="file" name="image" required
+                 accept="image/png,image/jpeg,image/webp" />
+          <p class="file-name"></p>
+          <img class="thumb-preview hidden" alt="Preview" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Name <span class="req">*</span></label>
+        <input type="text" name="design_name" required maxlength="120"
+               placeholder="e.g. Rose Gold Chrome French" />
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Category</label>
+          <select name="category">
+            {% for cat in categories %}
+              <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Surcharge (Rs.)</label>
+          <input type="number" name="extra_price" min="0" max="5000" step="50"
+                 value="0" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Best suited to</label>
+        <select name="service_id">
+          <option value="">, any service, </option>
+          {% for service in services %}
+            <option value="{{ service.id }}">{{ service.service_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+        <button class="btn btn-gold" type="submit">Upload design</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

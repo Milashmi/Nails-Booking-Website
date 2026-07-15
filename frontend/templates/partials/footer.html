@@ -1,0 +1,51 @@
+{% import 'partials/icons.html' as icon %}
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-about">
+      <a href="{{ url_for('main.index') }}" class="brand">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ salon.name }}" />
+        <span class="brand-text">
+          <span class="brand-name">Eleanora</span>
+          <span class="brand-sub">Nail Studio</span>
+        </span>
+      </a>
+      <p>{{ salon.tagline }}. A private home studio in {{ salon.area }}, one client at a time, never rushed.</p>
+      <div class="row">
+        <span class="pill pill-rose">{{ icon.pin() }} Home studio</span>
+        <span class="pill">By appointment</span>
+      </div>
+    </div>
+
+    <div>
+      <h4>Explore</h4>
+      <a href="{{ url_for('main.services') }}">Services</a>
+      <a href="{{ url_for('main.gallery') }}">Design gallery</a>
+      <a href="{{ url_for('main.colors') }}">Colour palette</a>
+      <a href="{{ url_for('main.reviews') }}">Reviews</a>
+    </div>
+
+    <div>
+      <h4>Your visit</h4>
+      <a href="{{ url_for('booking.book') }}">Book an appointment</a>
+      <a href="{{ url_for('booking.my_appointments') }}">My appointments</a>
+      <a href="{{ url_for('main.about') }}">About the studio</a>
+      <a href="{{ url_for('main.contact') }}">Contact</a>
+    </div>
+
+    <div>
+      <h4>Get in touch</h4>
+      <a href="tel:{{ salon.phone | replace(' ', '') }}">{{ salon.phone }}</a>
+      <a href="mailto:{{ salon.email }}">{{ salon.email }}</a>
+      <p class="muted" style="margin-top:10px">
+        Sun – Fri · {{ salon.open_hour }}:00 am – {{ salon.close_hour - 12 }}:00 pm<br />
+        Saturday · Closed
+      </p>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <span>&copy; {{ current_year }} {{ salon.name }}. All rights reserved.</span>
+    <span>Designed &amp; developed by <a href="{{ url_for('main.about') }}">Mizumi Lamgade</a></span>
+  </div>
+</footer>

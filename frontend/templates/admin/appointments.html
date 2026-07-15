@@ -1,0 +1,51 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+{% from 'admin/_appt.html' import admin_appointment %}
+
+{% block title %}Appointments · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}All <em>appointments</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Approve, complete or cancel any booking, and check the payment that came
+    with it. A slot is only held once you approve.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="filter-bar">
+  <a class="chip {{ 'active' if active == 'all' }}"
+     href="{{ url_for('admin.appointments') }}">
+    All <span class="muted">({{ counts.all }})</span>
+  </a>
+  <a class="chip {{ 'active' if active == 'pending' }}"
+     href="{{ url_for('admin.appointments', status='pending') }}">
+    Pending <span class="muted">({{ counts.pending }})</span>
+  </a>
+  <a class="chip {{ 'active' if active == 'approved' }}"
+     href="{{ url_for('admin.appointments', status='approved') }}">
+    Confirmed <span class="muted">({{ counts.approved }})</span>
+  </a>
+  <a class="chip {{ 'active' if active == 'completed' }}"
+     href="{{ url_for('admin.appointments', status='completed') }}">
+    Completed <span class="muted">({{ counts.completed }})</span>
+  </a>
+  <a class="chip {{ 'active' if active == 'cancelled' }}"
+     href="{{ url_for('admin.appointments', status='cancelled') }}">
+    Cancelled <span class="muted">({{ counts.cancelled }})</span>
+  </a>
+</div>
+
+{% if appointments %}
+  {% for appt in appointments %}
+    {{ admin_appointment(appt) }}
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <h3>Nothing here</h3>
+    <p class="muted">No bookings with that status.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

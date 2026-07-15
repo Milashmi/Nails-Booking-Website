@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}{{ salon.name }} | {{ salon.tagline }}{% endblock %}
+
+{% block content %}
+
+<!-- ---------------------------------------------------------------- hero -->
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow">Home studio · {{ salon.area }}</span>
+
+    <h1>
+      Nails that speak
+      <em class="metal-text">elegance</em>
+    </h1>
+
+    <p class="lede">
+      A private nail studio where one client is seen at a time, no queues, no
+      rush. Gel overlays, sculpted extensions, Gel-X and acrylics, finished with
+      art you actually chose.
+    </p>
+
+    <div class="hero-cta">
+      <a class="btn btn-gold btn-lg" href="{{ url_for('booking.book') }}">
+        Book now {{ icon.arrow() }}
+      </a>
+      <a class="btn btn-ghost btn-lg" href="{{ url_for('main.gallery') }}">
+        See the gallery
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num"><span data-count="{{ stats.clients }}">0</span>+</div>
+        <div class="lbl">Happy clients</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num"><span data-count="{{ stats.completed }}">0</span>+</div>
+        <div class="lbl">Sets finished</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num"><span data-count="{{ stats.designs }}">0</span></div>
+        <div class="lbl">Designs on offer</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num"><span data-count="{{ stats.rating }}">0</span> / 5</div>
+        <div class="lbl">{{ review_count }} reviews</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- the floating collage: three photos that drift as you scroll -->
+  <div class="hero-art">
+    {% if featured|length >= 3 %}
+      <div class="hero-tile hero-tile-1" data-parallax="0.05">
+        <img src="{{ url_for('static', filename=featured[0].image_url_path) }}"
+             alt="{{ featured[0].design_name }}" />
+      </div>
+      <div class="hero-tile hero-tile-2" data-parallax="0.10">
+        <img src="{{ url_for('static', filename=featured[1].image_url_path) }}"
+             alt="{{ featured[1].design_name }}" />
+      </div>
+      <div class="hero-tile hero-tile-3" data-parallax="0.14">
+        <img src="{{ url_for('static', filename=featured[2].image_url_path) }}"
+             alt="{{ featured[2].design_name }}" />
+      </div>
+    {% endif %}
+
+    <div class="hero-seal">
+      <span class="seal-ring"></span>
+      <span>Since<br /><strong>2021</strong></span>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- marquee -->
+<div class="marquee">
+  <div class="marquee-track">
+    {% for _ in range(2) %}
+      <span>Gel Overlay</span><span>Gel Extensions</span><span>Gel-X</span>
+      <span>Acrylic</span><span>Nail Art</span><span>Chrome</span>
+      <span>French</span><span>Ombré</span><span>3D Florals</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------ services -->
+<section class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">The menu</span>
+    <h2 class="section-h2">Four ways to wear them</h2>
+    <p class="lede center">
+      Every set is shaped, sculpted and finished by hand. Pick the treatment, the art comes next.
+    </p>
+  </div>
+
+  <div class="grid grid-4 stagger">
+    {% for service in services %}
+      <article class="service-card" data-tilt="5">
+        <div class="service-media">
+          {% if service.image %}
+            <img src="{{ url_for('static', filename=service.image_url_path) }}"
+                 alt="{{ service.service_name }}" loading="lazy" />
+          {% endif %}
+          <span class="service-price-tag">{{ service.price | rs }}</span>
+        </div>
+
+        <div class="service-body">
+          <h3>{{ service.service_name }}</h3>
+          <p>{{ service.description }}</p>
+
+          <div class="service-meta">
+            <span class="row">{{ icon.clock() }} {{ service.duration_label }}</span>
+            <span class="row">{{ icon.tag() }} from {{ service.price | rs }}</span>
+          </div>
+
+          <a class="btn btn-primary btn-block"
+             href="{{ url_for('booking.book', service=service.id) }}">
+            Book this
+          </a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- gallery -->
+<section class="page" style="padding-top:0">
+  <div class="spread section-head reveal">
+    <div>
+      <span class="eyebrow">The gallery</span>
+      <h2 class="section-h2">Recent work</h2>
+    </div>
+    <a class="btn btn-ghost" href="{{ url_for('main.gallery') }}">
+      All {{ stats.designs }} designs {{ icon.arrow() }}
+    </a>
+  </div>
+
+  <div class="gallery-grid stagger">
+    {% for design in featured %}
+      <article class="design-card" data-tilt="6">
+        <div class="design-media">
+          <img src="{{ url_for('static', filename=design.image_url_path) }}"
+               alt="{{ design.design_name }}" loading="lazy" />
+        </div>
+
+        <div class="design-overlay">
+          <span class="design-cat">{{ design.category }}</span>
+          <h4>{{ design.design_name }}</h4>
+          <div class="design-actions">
+            <a class="btn btn-gold btn-sm"
+               href="{{ url_for('booking.book', design=design.id) }}">Select design</a>
+            {% if design.extra_price %}
+              <span class="design-extra">+{{ design.extra_price | rs }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- --------------------------------------------------------- how it works -->
+<section class="page" style="padding-top:0">
+  <div class="section-head center reveal">
+    <span class="eyebrow">How it works</span>
+    <h2 class="section-h2">Booked in nine taps</h2>
+  </div>
+
+  <div class="grid grid-4 stagger">
+    {% set steps = [
+      ('Choose a service', 'Overlay, extensions, Gel-X or acrylic.'),
+      ('Design & colours', 'Pick a set from the gallery, then your base, secondary and accent.'),
+      ('Shape, length, slot', 'Only the dates we can actually take you are shown.'),
+      ('Pay & confirm', 'Pay now via QR or settle at the studio. Confirmed once we check it.')
+    ] %}
+
+    {% for title, body in steps %}
+      <div class="card card-hover">
+        <div class="value-icon" style="margin-bottom:14px">
+          <strong>{{ loop.index }}</strong>
+        </div>
+        <h4 style="font-size:19px;margin-bottom:6px">{{ title }}</h4>
+        <p class="muted">{{ body }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- -------------------------------------------------------- testimonials -->
+{% if testimonials %}
+<section class="page" style="padding-top:0">
+  <div class="spread section-head reveal">
+    <div>
+      <span class="eyebrow">Kind words</span>
+      <h2 class="section-h2">{{ stats.rating }} out of 5, from {{ review_count }} clients</h2>
+    </div>
+    <a class="btn btn-ghost" href="{{ url_for('main.reviews') }}">
+      Read them all {{ icon.arrow() }}
+    </a>
+  </div>
+
+  <div class="grid grid-3 stagger">
+    {% for review in testimonials %}
+      <article class="quote-card">
+        <span class="stars">
+          {% for _ in review.stars %}{{ icon.star() }}{% endfor %}
+        </span>
+        <p>“{{ review.comment }}”</p>
+        <div class="quote-who">
+          <span class="quote-avatar">{{ review.user.initials }}</span>
+          <div>
+            <div style="font-size:14px;font-weight:500">{{ review.user.full_name }}</div>
+            <div class="muted small">{{ review.created_at.strftime('%b %Y') }}</div>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ------------------------------------------------------------------ cta -->
+<section class="page" style="padding-top:0">
+  <div class="card reveal" style="text-align:center;padding:66px 30px;background:var(--surface-2)">
+    <span class="eyebrow" style="justify-content:center">Ready when you are</span>
+    <h2 class="section-h2" style="margin-bottom:12px">
+      Let's get those nails <em class="metal-text" style="font-family:var(--font-script);font-style:normal;font-size:1.2em">done</em>
+    </h2>
+    <p class="lede" style="margin:0 auto 26px">
+      Slots go quickly, the calendar only shows the days we can still take you.
+    </p>
+    <a class="btn btn-gold btn-lg" href="{{ url_for('booking.book') }}">
+      Book an appointment {{ icon.arrow() }}
+    </a>
+  </div>
+</section>
+
+{% endblock %}

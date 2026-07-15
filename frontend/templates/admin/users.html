@@ -1,0 +1,103 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Customers · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}Your <em>customers</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Everyone with an account. Deleting a customer also removes their bookings,
+    payments and reviews, there is no undo.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<form class="filter-bar" method="get" action="{{ url_for('admin.users') }}">
+  <label class="search-bar grow" style="max-width:340px">
+    {{ icon.search() }}
+    <input type="search" name="q" value="{{ q }}"
+           placeholder="Search by name, email or phone…" />
+  </label>
+  <button class="btn btn-soft btn-sm" type="submit">Search</button>
+  {% if q %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">Clear</a>
+  {% endif %}
+</form>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Contact</th>
+        <th>Bookings</th>
+        <th>Joined</th>
+        <th>Security</th>
+        <th></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for user in users %}
+        <tr>
+          <td>
+            <div class="row">
+              <span class="avatar" style="width:34px;height:34px;font-size:12px">
+                {% if user.avatar %}
+                  <img src="{{ url_for('static', filename='uploads/' ~ user.avatar) }}" alt="" />
+                {% else %}
+                  {{ user.initials }}
+                {% endif %}
+              </span>
+              <div>
+                <div style="font-weight:500">{{ user.full_name }}</div>
+                {% if user.is_admin %}
+                  <span class="pill pill-rose">Owner</span>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <div>{{ user.email }}</div>
+            <div class="muted small">{{ user.phone or ', ' }}</div>
+          </td>
+
+          <td><strong>{{ counts.get(user.id, 0) }}</strong></td>
+
+          <td class="muted">{{ user.created_at.strftime('%d %b %Y') }}</td>
+
+          <td>
+            {% if user.totp_enabled %}
+              <span class="pill pill-ok">{{ icon.shield() }} 2FA on</span>
+            {% else %}
+              <span class="pill">2FA off</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if not user.is_admin %}
+              <form method="post"
+                    action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                    data-confirm="Delete {{ user.full_name }}? Their bookings and reviews go too.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button class="btn btn-ghost btn-sm" type="submit">
+                  {{ icon.trash() }}
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6" class="muted center" style="padding:40px">
+            Nobody matched that search.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Two-factor code · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-art">
+    <img src="{{ url_for('static', filename='designs/iridescent-seashell.jpg') }}" alt="" />
+    <div class="auth-art-copy">
+      <span class="script">Almost there</span>
+      <p>One more step, and your account stays yours.</p>
+    </div>
+  </div>
+
+  <div class="auth-form">
+    <div class="auth-inner">
+      <span class="value-icon" style="margin-bottom:16px">{{ icon.shield() }}</span>
+      <h1>Enter your code</h1>
+      <p class="muted" style="margin-bottom:26px">
+        Open your authenticator app and type the 6-digit code it shows for
+        {{ salon.name }}.
+      </p>
+
+      <form method="post" action="{{ url_for('auth.two_factor') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+        <div class="field">
+          <label for="code">Authentication code</label>
+          <input type="text" id="code" name="code" class="otp-input"
+                 inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                 autocomplete="one-time-code" required autofocus
+                 placeholder="000000" />
+        </div>
+
+        <button class="btn btn-gold btn-block btn-lg" type="submit">
+          Verify {{ icon.arrow() }}
+        </button>
+      </form>
+
+      <p class="muted small mt" style="text-align:center">
+        The code changes every 30 seconds. Too many wrong tries will lock the
+        account for a while.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

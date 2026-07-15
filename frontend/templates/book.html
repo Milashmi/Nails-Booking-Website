@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Book an appointment · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head reveal">
+    <span class="eyebrow">Book an appointment</span>
+    <h1 class="page-h1">Let's build your <em>set</em></h1>
+    <p class="lede">
+      Nine quick steps. Nothing is charged and no slot is held until Eleanora
+      confirms it, you'll see it go from pending to confirmed on your
+      appointments page.
+    </p>
+  </div>
+
+  <form id="booking-form" class="wizard" method="post"
+        action="{{ url_for('booking.create') }}" enctype="multipart/form-data"
+        data-preselect-service="{{ preselect_service or '' }}"
+        data-preselect-design="{{ preselect_design or '' }}">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" id="deposit-amount" value="{{ deposit }}" />
+
+    <!-- the real fields the browser posts; the wizard keeps them in sync -->
+    <input type="hidden" name="service_id" id="f-service" />
+    <input type="hidden" name="design_id" id="f-design" />
+    <input type="hidden" name="color_id" id="f-color" />
+    <input type="hidden" name="secondary_color_id" id="f-secondary" />
+    <input type="hidden" name="accent_color_id" id="f-accent" />
+    <input type="hidden" name="nail_shape" id="f-shape" />
+    <input type="hidden" name="nail_length" id="f-length" />
+    <input type="hidden" name="booking_date" id="f-date" />
+    <input type="hidden" name="booking_time" id="f-time" />
+    <input type="hidden" name="payment_method" id="f-payment" />
+
+    <!-- ================= the steps ================= -->
+    <div>
+      <div class="step-rail">
+        {% for _ in range(9) %}<span class="step-dot"></span>{% endfor %}
+      </div>
+
+      <!-- ---------- 1: service ---------- -->
+      <section class="step" data-step="1">
+        <div class="step-head">
+          <span class="step-num">Step 1 of 9</span>
+          <h2>Choose a service</h2>
+          <p class="muted">What are we doing to your nails today?</p>
+        </div>
+
+        <div class="grid grid-2">
+          {% for service in services %}
+            <button type="button" class="option" data-service="{{ service.id }}"
+                    data-name="{{ service.service_name }}"
+                    data-price="{{ service.price }}"
+                    data-duration="{{ service.duration }}">
+              <h4>{{ service.service_name }}</h4>
+              <p class="muted" style="font-size:13.5px;margin:6px 0">
+                {{ service.description }}
+              </p>
+              <div class="opt-meta row">
+                {{ icon.clock() }} {{ service.duration_label }}
+              </div>
+              <div class="opt-price">{{ service.price | rs }}</div>
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- ---------- 2: design ---------- -->
+      <section class="step" data-step="2">
+        <div class="step-head">
+          <span class="step-num">Step 2 of 9</span>
+          <h2>Choose a design</h2>
+          <p class="muted">
+            {{ designs|length }} sets to choose from. The ones that suit your
+            service are shown first.
+          </p>
+        </div>
+
+        <div class="filter-bar">
+          <button type="button" class="chip active" data-design-filter="All">All</button>
+          {% for cat in categories %}
+            <button type="button" class="chip" data-design-filter="{{ cat }}">
+              {{ cat }}
+            </button>
+          {% endfor %}
+        </div>
+
+        <div class="pick-grid" id="design-grid">
+          {% for design in designs %}
+            <div class="pick-tile" data-design="{{ design.id }}"
+                 data-name="{{ design.design_name }}"
+                 data-category="{{ design.category }}"
+                 data-extra="{{ design.extra_price }}"
+                 data-service-id="{{ design.service_id or 0 }}"
+                 data-image="{{ url_for('static', filename=design.image_url_path) }}">
+              <img src="{{ url_for('static', filename=design.image_url_path) }}"
+                   alt="{{ design.design_name }}" loading="lazy" />
+              <div class="pick-label">
+                <div class="cat">{{ design.category }}</div>
+                {{ design.design_name }}
+                {% if design.extra_price %}
+                  <div class="muted small">+{{ design.extra_price | rs }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- ---------- 3: colours ---------- -->
+      <section class="step" data-step="3">
+        <div class="step-head">
+          <span class="step-num">Step 3 of 9</span>
+          <h2>Choose your colours</h2>
+          <p class="muted">
+            A base is required. The secondary and accent are optional, tap a
+            colour again to clear it.
+          </p>
+        </div>
+
+        <!-- a live preview of the trio -->
+        <div class="card" style="margin-bottom:26px">
+          <div class="nail-preview">
+            <div class="nail" id="nail-base"></div>
+            <div class="nail nail-tall" id="nail-secondary"></div>
+            <div class="nail" id="nail-accent"></div>
+          </div>
+        </div>
+
+        <div class="color-columns">
+          {% for layer, label, hint in [
+            ('base', 'Base colour', 'The main colour, on every nail.'),
+            ('secondary', 'Secondary', 'For tips, swirls and ombré.'),
+            ('accent', 'Accent', 'Chrome, glitter and the details.')
+          ] %}
+            <div class="color-col">
+              <h4>
+                {{ label }}
+                {% if layer == 'base' %}<span class="req">*</span>{% endif %}
+              </h4>
+              <p class="muted small">{{ hint }}</p>
+
+              <div class="color-list">
+                {% for color in colors %}
+                  <button type="button" class="color-dot"
+                          data-color="{{ color.id }}"
+                          data-layer="{{ layer }}"
+                          data-name="{{ color.color_name }}"
+                          data-hex="{{ color.hex_code }}"
+                          style="background: {{ color.hex_code }}"
+                          title="{{ color.color_name }}"
+                          aria-label="{{ color.color_name }}"></button>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- ---------- 4: shape ---------- -->
+      <section class="step" data-step="4">
+        <div class="step-head">
+          <span class="step-num">Step 4 of 9</span>
+          <h2>Choose a nail shape</h2>
+          <p class="muted">How the free edge is filed.</p>
+        </div>
+
+        <div class="shape-grid">
+          {% for shape in shapes %}
+            <button type="button" class="option shape-opt" data-shape="{{ shape }}">
+              <span class="shape-icon shape-{{ shape | lower }}"></span>
+              <h4 style="font-size:16px">{{ shape }}</h4>
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- ---------- 5: length ---------- -->
+      <section class="step" data-step="5">
+        <div class="step-head">
+          <span class="step-num">Step 5 of 9</span>
+          <h2>Choose a nail length</h2>
+          <p class="muted">
+            Longer nails need more product and more sculpting, so they carry a
+            small surcharge.
+          </p>
+        </div>
+
+        <div class="grid grid-4">
+          {% for length, extra in lengths.items() %}
+            <button type="button" class="option center" data-length="{{ length }}"
+                    data-extra="{{ extra }}">
+              <h4>{{ length }}</h4>
+              <div class="opt-price">
+                {% if extra %}+ {{ extra | rs }}{% else %}Included{% endif %}
+              </div>
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- ---------- 6: date ---------- -->
+      <section class="step" data-step="6">
+        <div class="step-head">
+          <span class="step-num">Step 6 of 9</span>
+          <h2>Choose a date</h2>
+          <p class="muted">
+            Only the days we can still fit you in are shown. A full day, a
+            closed day or a holiday simply won't appear.
+          </p>
+        </div>
+
+        <div class="date-grid" id="date-grid">
+          <div class="loading"><span class="spinner"></span>Loading the calendar…</div>
+        </div>
+      </section>
+
+      <!-- ---------- 7: time ---------- -->
+      <section class="step" data-step="7">
+        <div class="step-head">
+          <span class="step-num">Step 7 of 9</span>
+          <h2>Choose a time</h2>
+          <p class="muted">
+            Each slot is long enough for the whole treatment, you will never be
+            rushed out for the next client.
+          </p>
+        </div>
+
+        <div class="time-grid" id="time-grid">
+          <p class="muted">Pick a date first.</p>
+        </div>
+      </section>
+
+      <!-- ---------- 8: summary ---------- -->
+      <section class="step" data-step="8">
+        <div class="step-head">
+          <span class="step-num">Step 8 of 9</span>
+          <h2>Check it over</h2>
+          <p class="muted">Have a last look before we send it to Eleanora.</p>
+        </div>
+
+        <div class="card">
+          <div id="final-summary"></div>
+
+          <div class="summary-total" style="margin:18px -26px -26px;border-radius:0 0 var(--radius) var(--radius)">
+            <span class="k">Total</span>
+            <span class="v metal-text" id="final-total">Rs. 0</span>
+          </div>
+        </div>
+
+        <div class="field mt">
+          <label for="notes">Anything else we should know? (optional)</label>
+          <textarea id="notes" name="notes" maxlength="500"
+                    placeholder="Allergies, a reference photo you'll bring, a shape you hated last time…"></textarea>
+        </div>
+      </section>
+
+      <!-- ---------- 9: payment ---------- -->
+      <section class="step" data-step="9">
+        <div class="step-head">
+          <span class="step-num">Step 9 of 9</span>
+          <h2>Pay the advance &amp; confirm</h2>
+          <p class="muted">
+            Every booking holds its slot with a <strong>{{ deposit | rs }}
+            advance</strong>. Your booking stays <strong>pending</strong> until
+            Eleanora has verified it, you'll be notified the moment she does.
+          </p>
+        </div>
+
+        <!-- promo code -->
+        <div class="card" style="margin-bottom:22px">
+          <div class="row" style="margin-bottom:10px">
+            {{ icon.tag() }}
+            <h4 style="font-size:16px;font-family:var(--font-sans);font-weight:600">
+              Have a promo code?
+            </h4>
+          </div>
+
+          <div class="promo-row">
+            <input type="text" id="promo-input" name="promo_code" maxlength="24"
+                   class="grow" placeholder="e.g. WELCOME10"
+                   autocomplete="off" />
+            <button type="button" class="btn btn-soft" id="promo-apply">
+              Apply
+            </button>
+          </div>
+
+          <p class="promo-note hidden" id="promo-note"></p>
+        </div>
+
+        <!-- how the balance is settled -->
+        <div class="grid grid-2" style="margin-bottom:22px">
+          <button type="button" class="option" data-payment="advance">
+            <div class="row" style="margin-bottom:6px">
+              {{ icon.home() }} <h4>Balance at the studio</h4>
+            </div>
+            <p class="muted" style="font-size:13.5px">
+              Pay the {{ deposit | rs }} advance now; bring the rest with you on
+              the day.
+            </p>
+            <div class="opt-price">
+              {{ deposit | rs }} now
+              <span class="muted" style="font-weight:400">
+                · <span id="pay-later-amount">Rs. 0</span> on the day
+              </span>
+            </div>
+          </button>
+
+          <button type="button" class="option" data-payment="full">
+            <div class="row" style="margin-bottom:6px">
+              {{ icon.wallet() }} <h4>Settle it all by transfer</h4>
+            </div>
+            <p class="muted" style="font-size:13.5px">
+              Send the {{ deposit | rs }} advance now, and the balance by eSewa
+              before your appointment.
+            </p>
+            <div class="opt-price">
+              {{ deposit | rs }} now
+              <span class="muted" style="font-weight:400">
+                · <span id="pay-full-amount">Rs. 0</span> total
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <!-- the advance is ALWAYS required, so this panel is always shown -->
+        <div class="pay-panel card">
+          <!-- the studio's payment QR -->
+          <div>
+            <div class="qr-box">
+              <img src="{{ url_for('static', filename='img/payment-qr.jpeg') }}"
+                   alt="Scan to pay {{ salon.name }}" width="200" />
+              <p class="qr-note">
+                Scan with eSewa or your banking app<br />
+                <strong>{{ salon.esewa_name }}</strong><br />
+                {{ salon.esewa }}
+              </p>
+            </div>
+            <p class="muted small center mt">
+              Transfer exactly <strong>{{ deposit | rs }}</strong>, then fill in
+              the two fields beside this.
+            </p>
+          </div>
+
+          <!-- the proof -->
+          <div>
+            <div class="field">
+              <label for="f-txn">
+                Transaction code <span class="req">*</span>
+              </label>
+              <input type="text" id="f-txn" name="transaction_code"
+                     maxlength="60" required
+                     placeholder="e.g. ESW8472910384" />
+              <p class="hint">
+                The reference your app shows after the transfer. This cannot be
+                left empty.
+              </p>
+            </div>
+
+            <div class="field">
+              <label>Payment screenshot <span class="req">*</span></label>
+
+              <div class="file-drop" data-file-drop>
+                {{ icon.upload() }}
+                <strong style="font-size:14px">Upload your eSewa receipt</strong>
+                <p class="muted small">PNG or JPG, up to 5 MB</p>
+                <input type="file" id="f-screenshot" name="screenshot" required
+                       accept="image/png,image/jpeg,image/webp" />
+                <p class="file-name"></p>
+                <img class="thumb-preview hidden" alt="Your screenshot" />
+              </div>
+            </div>
+
+            <p class="muted small row" style="align-items:flex-start;gap:7px">
+              {{ icon.scan() }}
+              <span>
+                We read your receipt automatically and check it went to
+                <strong>{{ salon.esewa }}</strong> for
+                <strong>{{ deposit | rs }}</strong>, so please upload the real
+                thing, not any other image.
+              </span>
+            </p>
+
+            <p class="muted small row" style="align-items:flex-start;gap:7px">
+              {{ icon.shield() }}
+              <span>
+                Cancel later and half your advance ({{ (deposit // 2) | rs }})
+                comes back to you.
+              </span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- nav ---------- -->
+      <div class="wizard-nav">
+        <button type="button" class="btn btn-ghost hidden" id="wizard-back">
+          {{ icon.arrowLeft() }} Back
+        </button>
+        <span></span>
+        <button type="button" class="btn btn-primary" id="wizard-next">
+          Continue {{ icon.arrow() }}
+        </button>
+        <button type="submit" class="btn btn-gold btn-lg hidden" id="wizard-submit">
+          Confirm booking {{ icon.check() }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= the running summary ================= -->
+    <aside class="summary-card">
+      <div class="summary-head">
+        <h3>Your booking</h3>
+        <p class="muted small">Updates as you choose.</p>
+      </div>
+
+      <div class="summary-body">
+        <div class="summary-row">
+          <span class="k">Service</span><span class="v empty-v" id="sum-service">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Design</span><span class="v empty-v" id="sum-design">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Colours</span>
+          <span class="summary-dots" id="sum-colors">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Shape</span><span class="v empty-v" id="sum-shape">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Length</span><span class="v empty-v" id="sum-length">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Date</span><span class="v empty-v" id="sum-date">, </span>
+        </div>
+        <div class="summary-row">
+          <span class="k">Time</span><span class="v empty-v" id="sum-time">, </span>
+        </div>
+        <div class="summary-row hidden" id="sum-discount-row">
+          <span class="k" style="color:var(--ok)">Discount</span>
+          <span class="v" id="sum-discount" style="color:var(--ok)">, </span>
+        </div>
+      </div>
+
+      <div class="summary-total">
+        <span class="k">Total</span>
+        <span class="v metal-text" id="sum-total">Rs. 0</span>
+      </div>
+
+      <div class="summary-body" style="border-top:1px solid var(--line);padding-top:14px">
+        <div class="summary-row" style="border:0;padding:4px 0">
+          <span class="k">Advance now</span>
+          <span class="v">{{ deposit | rs }}</span>
+        </div>
+        <div class="summary-row" style="border:0;padding:4px 0">
+          <span class="k">Balance later</span>
+          <span class="v" id="sum-balance">Rs. 0</span>
+        </div>
+      </div>
+    </aside>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/booking.js') }}"></script>
+{% endblock %}

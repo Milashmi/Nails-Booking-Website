@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Notifications · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:840px">
+  <div class="spread section-head reveal">
+    <div>
+      <span class="eyebrow">Your updates</span>
+      <h1 class="page-h1">Notifi<em>cations</em></h1>
+      <p class="lede">
+        Whether a booking has been confirmed, a payment needs re-sending, or a
+        refund is on its way, it all lands here.
+      </p>
+    </div>
+  </div>
+
+  {% if notifications %}
+    <div class="grid stagger" style="gap:12px">
+      {% for note in notifications %}
+        <article class="notif notif-{{ note.tone }}">
+          <span class="notif-icon">
+            {% if note.kind == 'approved' %}{{ icon.check() }}
+            {% elif note.kind == 'completed' %}{{ icon.sparkle() }}
+            {% elif note.kind == 'rejected' %}{{ icon.x() }}
+            {% elif note.kind == 'cancelled' %}{{ icon.x() }}
+            {% elif note.kind == 'refund' %}{{ icon.wallet() }}
+            {% elif note.kind == 'promo' %}{{ icon.tag() }}
+            {% else %}{{ icon.clock() }}{% endif %}
+          </span>
+
+          <div class="grow">
+            <div class="spread" style="align-items:baseline">
+              <h3 style="font-size:17px;font-family:var(--font-sans);font-weight:600">
+                {{ note.title }}
+              </h3>
+              <span class="muted small">
+                {{ note.created_at.strftime('%d %b, %I:%M %p') }}
+              </span>
+            </div>
+
+            {% if note.body %}
+              <p class="muted" style="margin-top:4px">{{ note.body }}</p>
+            {% endif %}
+
+            {% if note.appointment %}
+              <a class="btn btn-soft btn-sm" style="margin-top:10px"
+                 href="{{ url_for('booking.my_appointments') }}">
+                View the booking {{ icon.arrow() }}
+              </a>
+            {% elif note.kind == 'promo' %}
+              <a class="btn btn-gold btn-sm" style="margin-top:10px"
+                 href="{{ url_for('booking.book') }}">
+                Book with it {{ icon.arrow() }}
+              </a>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>Nothing yet</h3>
+      <p class="muted">
+        When Eleanora confirms a booking, you'll hear about it here first.
+      </p>
+      <a class="btn btn-gold mt" href="{{ url_for('booking.book') }}">
+        Book an appointment {{ icon.arrow() }}
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

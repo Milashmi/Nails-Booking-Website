@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Runs before the first paint so the page never flashes the wrong theme -->
+  <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{ salon.name }}, {{ salon.tagline }}. A home nail studio in {{ salon.area }}: gel overlays, extensions, Gel-X and acrylics." />
+  <!-- CSRF token exposed to JavaScript for any AJAX request -->
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <title>{% block title %}{{ salon.name }}{% endblock %}</title>
+
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Italianno&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- Brand splash. JS removes it as soon as the page is ready; without JS the
+       CSS keeps it hidden, so it can never trap anyone on a blank screen. -->
+  <div class="preloader" id="preloader">
+    <div class="preloader-inner">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" />
+      <span class="preloader-bar"><i></i></span>
+      <span class="preloader-word">{{ salon.tagline }}</span>
+    </div>
+  </div>
+
+  {% include 'partials/navbar.html' %}
+
+  <!-- Flash messages (success / error / info) -->
+  <div class="flash-stack" id="flash-stack">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+          <span>{{ message }}</span>
+          <button class="flash-close" data-close aria-label="Dismiss">&times;</button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include 'partials/footer.html' %}
+
+  <!-- Our own confirm dialog, in place of the browser's default box -->
+  <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-text">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <h3 id="confirm-text">Are you sure?</h3>
+      <p class="muted">This cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

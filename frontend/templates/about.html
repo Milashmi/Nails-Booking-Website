@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}About · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">Our story</span>
+    <h1 class="page-h1">About <em>Eleanora</em></h1>
+  </div>
+
+  <div class="split reveal">
+    <div class="split-art">
+      <img src="{{ url_for('static', filename='designs/gold-line-french.jpg') }}"
+           alt="Work from the studio" />
+    </div>
+
+    <div>
+      <h2 class="section-h2">A home studio, not a factory</h2>
+      <p class="lede mt">
+        Eleanora Nails began at a kitchen table in {{ salon.area }} in 2021, with
+        one lamp, one set of brushes and a lot of patience. It is still a home
+        studio today, and that is on purpose.
+      </p>
+      <p class="lede mt">
+        Only one client is booked at a time. Nobody is waiting behind you, so
+        nothing is rushed: the prep is done properly, the shape is filed until it
+        is right, and the art is painted while you sit and talk. It is why a set
+        from here lasts, and why most people who come once come back.
+      </p>
+
+      <div class="hero-stats" style="margin-top:34px">
+        <div class="hero-stat">
+          <div class="num"><span data-count="{{ stats.clients }}">0</span>+</div>
+          <div class="lbl">Clients</div>
+        </div>
+        <div class="hero-stat">
+          <div class="num"><span data-count="{{ stats.completed }}">0</span>+</div>
+          <div class="lbl">Sets finished</div>
+        </div>
+        <div class="hero-stat">
+          <div class="num"><span data-count="{{ stats.rating }}">0</span>/5</div>
+          <div class="lbl">{{ stats.reviews }} reviews</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- mission -->
+  <div class="card mt-lg reveal" style="text-align:center;padding:56px 30px;background:var(--surface-2)">
+    <span class="eyebrow" style="justify-content:center">Our mission</span>
+    <h2 class="section-h2" style="max-width:24ch;margin:12px auto 0;">
+      To make every client leave feeling
+      <em class="metal-text" style="font-family:var(--font-script);font-style:normal;font-size:1.3em">confident</em>
+    </h2>
+    <p class="lede" style="margin:16px auto 0">
+      Beautiful nails are the visible part. The point is the twenty minutes
+      afterwards, when you keep catching sight of your own hands and smiling.
+    </p>
+  </div>
+
+  <!-- why choose us -->
+  <div class="mt-lg">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Why choose us</span>
+      <h2 class="section-h2">What you get here</h2>
+    </div>
+
+    <div class="grid grid-3 stagger">
+      {% set values = [
+        ('One client at a time', 'Your slot is yours. No double-booking, no waiting room, no rushing you out the door.'),
+        ('Hygiene, seriously', 'Every tool is sterilised between clients. Files and buffers are single-use.'),
+        ('Nail health first', 'We never drill into the natural nail. Everything is soaked off properly, so your nails stay strong.'),
+        ('Real prices, up front', 'The total is on screen before you confirm. No surprise add-ons when you go to pay.'),
+        ('Art you actually chose', 'Thirty designs to browse, three colour layers, five shapes, four lengths, it is your set.'),
+        ('Aftercare that works', 'You leave knowing how to keep them looking new, and we are a message away if anything lifts.')
+      ] %}
+
+      {% for title, body in values %}
+        <div class="card card-hover">
+          <span class="value-icon" style="margin-bottom:14px">{{ icon.sparkle() }}</span>
+          <h4 style="font-size:19px;margin-bottom:6px">{{ title }}</h4>
+          <p class="muted">{{ body }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- hours + location -->
+  <div class="grid grid-2 mt-lg reveal">
+    <div class="card">
+      <span class="eyebrow">Opening hours</span>
+      <h3 style="font-size:26px;margin:10px 0 18px">When we're open</h3>
+
+      {% set hours = [
+        ('Sunday', '10:00 am – 6:00 pm', false),
+        ('Monday', '10:00 am – 6:00 pm', false),
+        ('Tuesday', '10:00 am – 6:00 pm', false),
+        ('Wednesday', '10:00 am – 6:00 pm', false),
+        ('Thursday', '10:00 am – 6:00 pm', false),
+        ('Friday', '10:00 am – 6:00 pm', false),
+        ('Saturday', 'Closed', true)
+      ] %}
+
+      {% for day, time, closed in hours %}
+        <div class="hours-row {{ 'closed' if closed }}">
+          <span class="day">{{ day }}</span>
+          <span>{{ time }}</span>
+        </div>
+      {% endfor %}
+
+      <p class="muted mt">
+        By appointment only, the calendar only offers slots we can actually take.
+      </p>
+    </div>
+
+    <div class="card">
+      <span class="eyebrow">Where to find us</span>
+      <h3 style="font-size:26px;margin:10px 0 18px">The studio</h3>
+
+      <div class="value-item" style="margin-bottom:16px">
+        <span class="value-icon">{{ icon.pin() }}</span>
+        <div>
+          <h4>{{ salon.area }}</h4>
+          <p>{{ salon.address }}</p>
+        </div>
+      </div>
+
+      <div class="value-item" style="margin-bottom:16px">
+        <span class="value-icon">{{ icon.home() }}</span>
+        <div>
+          <h4>A private home studio</h4>
+          <p>The exact address and directions are sent to you once your booking
+             is confirmed.</p>
+        </div>
+      </div>
+
+      <div class="value-item">
+        <span class="value-icon">{{ icon.phone() }}</span>
+        <div>
+          <h4>{{ salon.phone }}</h4>
+          <p>{{ salon.email }}</p>
+        </div>
+      </div>
+
+      <a class="btn btn-primary btn-block mt" href="{{ url_for('main.contact') }}">
+        Get in touch {{ icon.arrow() }}
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

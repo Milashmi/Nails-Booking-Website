@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Set up two-factor · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="narrow">
+  <div class="section-head reveal">
+    <span class="eyebrow">Security</span>
+    <h1 class="page-h1">Set up <em>two-factor</em></h1>
+  </div>
+
+  <div class="card reveal">
+    <ol style="list-style:none;counter-reset:s">
+      <!-- 1 -->
+      <li style="margin-bottom:30px">
+        <div class="row" style="margin-bottom:12px">
+          <span class="value-icon"><strong>1</strong></span>
+          <h3 style="font-size:20px">Install an authenticator app</h3>
+        </div>
+        <p class="muted">
+          Google Authenticator, Authy, Microsoft Authenticator, any of them
+          work. They all generate the same kind of code.
+        </p>
+      </li>
+
+      <!-- 2 -->
+      <li style="margin-bottom:30px">
+        <div class="row" style="margin-bottom:12px">
+          <span class="value-icon"><strong>2</strong></span>
+          <h3 style="font-size:20px">Scan this QR code</h3>
+        </div>
+
+        <div class="qr-box" style="max-width:230px;margin:0 auto">
+          <img src="{{ qr }}" alt="Two-factor QR code" width="200" height="200" />
+        </div>
+
+        <p class="muted center mt">
+          Can't scan it? Type this key in by hand:
+        </p>
+        <p class="center">
+          <code style="font-size:15px;letter-spacing:.1em;background:var(--surface-2);padding:8px 14px;border-radius:8px;display:inline-block">
+            {{ secret }}
+          </code>
+        </p>
+      </li>
+
+      <!-- 3 -->
+      <li>
+        <div class="row" style="margin-bottom:12px">
+          <span class="value-icon"><strong>3</strong></span>
+          <h3 style="font-size:20px">Type the code it shows</h3>
+        </div>
+        <p class="muted" style="margin-bottom:16px">
+          This proves the app is set up correctly. Two-factor is only switched
+          on once the code checks out.
+        </p>
+
+        <form method="post" action="{{ url_for('auth.setup_2fa') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="field">
+            <input type="text" name="code" class="otp-input" inputmode="numeric"
+                   pattern="[0-9]*" maxlength="6" required autofocus
+                   autocomplete="one-time-code" placeholder="000000" />
+          </div>
+
+          <div class="row">
+            <button class="btn btn-gold" type="submit">
+              Turn on two-factor {{ icon.check() }}
+            </button>
+            <a class="btn btn-ghost" href="{{ url_for('auth.profile') }}">Cancel</a>
+          </div>
+        </form>
+      </li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

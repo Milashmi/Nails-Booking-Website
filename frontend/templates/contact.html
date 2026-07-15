@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Contact · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">Say hello</span>
+    <h1 class="page-h1">Get in <em>touch</em></h1>
+    <p class="lede center">
+      Question about a design, an existing booking, or something you saw on
+      Instagram? Send it over, we usually reply within a few hours.
+    </p>
+  </div>
+
+  <div class="split reveal" style="align-items:start">
+    <!-- the form -->
+    <div class="card">
+      <h3 style="font-size:24px;margin-bottom:18px">Send a message</h3>
+
+      <form method="post" action="{{ url_for('main.contact') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+        <div class="field">
+          <label for="name">Your name <span class="req">*</span></label>
+          <input type="text" id="name" name="name" value="{{ name or '' }}"
+                 required maxlength="80" />
+        </div>
+
+        <div class="field">
+          <label for="email">Email <span class="req">*</span></label>
+          <input type="email" id="email" name="email" value="{{ email or '' }}"
+                 required maxlength="120" />
+        </div>
+
+        <div class="field">
+          <label for="message">Message <span class="req">*</span></label>
+          <textarea id="message" name="message" required minlength="10"
+                    maxlength="1000"
+                    placeholder="Tell us what you're after…">{{ message or '' }}</textarea>
+        </div>
+
+        <button class="btn btn-gold btn-block" type="submit">
+          Send message {{ icon.arrow() }}
+        </button>
+      </form>
+    </div>
+
+    <!-- the details -->
+    <div>
+      <div class="card" style="margin-bottom:24px">
+        <h3 style="font-size:24px;margin-bottom:18px">Details</h3>
+
+        <div class="value-item" style="margin-bottom:18px">
+          <span class="value-icon">{{ icon.phone() }}</span>
+          <div>
+            <h4>Phone</h4>
+            <p><a href="tel:{{ salon.phone | replace(' ', '') }}">{{ salon.phone }}</a></p>
+          </div>
+        </div>
+
+        <div class="value-item" style="margin-bottom:18px">
+          <span class="value-icon">{{ icon.mail() }}</span>
+          <div>
+            <h4>Email</h4>
+            <p><a href="mailto:{{ salon.email }}">{{ salon.email }}</a></p>
+          </div>
+        </div>
+
+        <div class="value-item" style="margin-bottom:18px">
+          <span class="value-icon">{{ icon.pin() }}</span>
+          <div>
+            <h4>Home studio</h4>
+            <p>{{ salon.address }}<br />
+               <span class="muted small">Exact directions are sent once your
+               booking is confirmed.</span></p>
+          </div>
+        </div>
+
+        <div class="value-item">
+          <span class="value-icon">{{ icon.clock() }}</span>
+          <div>
+            <h4>Hours</h4>
+            <p>Sunday – Friday · 10:00 am – 6:00 pm<br />
+               <span class="muted small">Saturday closed</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-frame">
+        <iframe src="{{ salon.map_embed }}" loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="Where the studio is"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

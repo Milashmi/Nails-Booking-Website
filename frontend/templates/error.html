@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}{{ code }} · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="narrow center" style="padding-top:110px">
+  <div class="reveal">
+    <div class="metal-text" style="font-family:var(--font-serif);font-size:110px;line-height:1;font-weight:600">
+      {{ code }}
+    </div>
+
+    <h1 class="page-h1" style="margin-top:10px">{{ message }}</h1>
+
+    <p class="lede" style="margin:0 auto 30px">
+      Let's get you back to something prettier.
+    </p>
+
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-gold" href="{{ url_for('main.index') }}">
+        Back home {{ icon.arrow() }}
+      </a>
+      <a class="btn btn-ghost" href="{{ url_for('main.gallery') }}">
+        Browse the gallery
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

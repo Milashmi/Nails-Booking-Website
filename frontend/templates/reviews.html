@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Reviews · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">Kind words</span>
+    <h1 class="page-h1">What clients <em>say</em></h1>
+  </div>
+
+  <!-- the average, and how the ratings break down -->
+  <div class="card reveal" style="margin-bottom:44px">
+    <div class="rating-hero">
+      <div class="center">
+        <div class="rating-big metal-text">{{ avg_rating }}</div>
+        <span class="stars">
+          {% for _ in range(avg_rating | round | int) %}{{ icon.star() }}{% endfor %}
+        </span>
+        <p class="muted" style="margin-top:6px">{{ review_count }} reviews</p>
+      </div>
+
+      <div>
+        {% for star in [5, 4, 3, 2, 1] %}
+          {% set count = spread.get(star, 0) %}
+          {% set pct = (count / review_count * 100) if review_count else 0 %}
+          <div class="rating-bar-row">
+            <span style="width:34px">{{ star }} ★</span>
+            <span class="rating-bar">
+              <i style="width: {{ pct }}%"></i>
+            </span>
+            <span style="width:34px;text-align:right">{{ count }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% if reviews %}
+    <div class="grid grid-3 stagger">
+      {% for review in reviews %}
+        <article class="quote-card">
+          <span class="stars">
+            {% for _ in review.stars %}{{ icon.star() }}{% endfor %}
+          </span>
+
+          {% if review.comment %}
+            <p>“{{ review.comment }}”</p>
+          {% endif %}
+
+          <div class="quote-who">
+            <span class="quote-avatar">{{ review.user.initials }}</span>
+            <div>
+              <div style="font-size:14px;font-weight:500">{{ review.user.full_name }}</div>
+              <div class="muted small">
+                {% if review.appointment and review.appointment.service %}
+                  {{ review.appointment.service.service_name }} ·
+                {% endif %}
+                {{ review.created_at.strftime('%b %Y') }}
+              </div>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>No reviews yet</h3>
+      <p class="muted">Be the first, book a set and tell us how it went.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

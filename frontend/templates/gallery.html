@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Design gallery · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">{{ designs|length }} designs</span>
+    <h1 class="page-h1">The <em>gallery</em></h1>
+    <p class="lede center">
+      Every set here has been done in this studio. Find one you love, then book
+      it, we'll recreate it in your colours, your shape, your length.
+    </p>
+  </div>
+
+  <!-- search + category filter (a plain GET form, so it works without JS) -->
+  <form class="filter-bar reveal" method="get" action="{{ url_for('main.gallery') }}">
+    <label class="search-bar grow" style="max-width:320px">
+      {{ icon.search() }}
+      <input type="search" name="q" value="{{ q }}"
+             placeholder="Search designs…" aria-label="Search designs" />
+    </label>
+
+    <a class="chip {{ 'active' if active_category == 'All' }}"
+       href="{{ url_for('main.gallery', q=q) }}">All</a>
+
+    {% for cat in categories %}
+      <a class="chip {{ 'active' if active_category == cat }}"
+         href="{{ url_for('main.gallery', category=cat, q=q) }}">{{ cat }}</a>
+    {% endfor %}
+
+    <button class="btn btn-soft btn-sm" type="submit">Search</button>
+  </form>
+
+  {% if designs %}
+    <div class="gallery-grid stagger">
+      {% for design in designs %}
+        <article class="design-card" data-tilt="6">
+          <div class="design-media">
+            <img src="{{ url_for('static', filename=design.image_url_path) }}"
+                 alt="{{ design.design_name }}" loading="lazy" />
+          </div>
+
+          <div class="design-overlay">
+            <span class="design-cat">{{ design.category }}</span>
+            <h4>{{ design.design_name }}</h4>
+
+            <div class="design-actions">
+              <a class="btn btn-gold btn-sm"
+                 href="{{ url_for('booking.book', design=design.id) }}">
+                Select design
+              </a>
+              {% if design.extra_price %}
+                <span class="design-extra">+{{ design.extra_price | rs }}</span>
+              {% else %}
+                <span class="design-extra">included</span>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>Nothing matched that</h3>
+      <p class="muted">Try another word, or browse every design.</p>
+      <a class="btn btn-ghost mt" href="{{ url_for('main.gallery') }}">
+        Show all designs
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

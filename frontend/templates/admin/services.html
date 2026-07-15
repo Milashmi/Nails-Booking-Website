@@ -1,0 +1,176 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Services · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}The <em>menu</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Add a treatment, change a price, or retire one. The duration decides how
+    long a slot the booking calendar reserves for it.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="spread" style="margin-bottom:20px">
+  <h2 style="font-size:22px">{{ services|length }} services</h2>
+  <button class="btn btn-gold" type="button" data-open-modal="add-service">
+    {{ icon.sparkle() }} Add a service
+  </button>
+</div>
+
+<div class="grid grid-2 stagger">
+  {% for service in services %}
+    <article class="card" style="{{ 'opacity:.6' if not service.is_active }}">
+      <div class="row" style="gap:16px;align-items:flex-start">
+        {% if service.image %}
+          <img class="appt-thumb" style="width:76px;height:76px"
+               src="{{ url_for('static', filename=service.image_url_path) }}"
+               alt="{{ service.service_name }}" />
+        {% endif %}
+
+        <div class="grow">
+          <div class="spread">
+            <h3 style="font-size:20px">{{ service.service_name }}</h3>
+            {% if not service.is_active %}
+              <span class="pill">Retired</span>
+            {% endif %}
+          </div>
+
+          <p class="muted" style="font-size:13.5px;margin:6px 0">
+            {{ service.description | truncate(120) }}
+          </p>
+
+          <div class="row wrap">
+            <span class="pill pill-rose">{{ service.price | rs }}</span>
+            <span class="pill">{{ icon.clock() }} {{ service.duration_label }}</span>
+            <span class="pill">{{ service.appointments|length }} bookings</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn btn-soft btn-sm" type="button"
+                data-open-modal="edit-service-{{ service.id }}">
+          {{ icon.edit() }} Edit
+        </button>
+
+        <form method="post"
+              action="{{ url_for('admin.delete_service', service_id=service.id) }}"
+              data-confirm="Delete '{{ service.service_name }}'? If it has bookings it will be retired instead.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {{ icon.trash() }} Delete
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- edit modal -->
+    <div class="modal hidden" id="edit-service-{{ service.id }}" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card">
+        <h3>Edit {{ service.service_name }}</h3>
+
+        <form method="post" enctype="multipart/form-data"
+              action="{{ url_for('admin.edit_service', service_id=service.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="field mt">
+            <label>Name</label>
+            <input type="text" name="service_name" value="{{ service.service_name }}"
+                   required maxlength="80" />
+          </div>
+
+          <div class="field">
+            <label>Description</label>
+            <textarea name="description" maxlength="400">{{ service.description }}</textarea>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Price (Rs.)</label>
+              <input type="number" name="price" value="{{ service.price }}"
+                     required min="1" max="100000" />
+            </div>
+
+            <div class="field">
+              <label>Duration (minutes)</label>
+              <input type="number" name="duration" value="{{ service.duration }}"
+                     required min="15" max="480" step="15" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Replace the photo (optional)</label>
+            <input type="file" name="image" accept="image/*" />
+          </div>
+
+          <label class="check">
+            <input type="checkbox" name="is_active"
+                   {{ 'checked' if service.is_active }} />
+            Show this service on the site
+          </label>
+
+          <div class="modal-actions">
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-gold" type="submit">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- add modal -->
+<div class="modal hidden" id="add-service" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card">
+    <h3>Add a service</h3>
+    <p class="muted">It appears on the menu and in the booking wizard straight away.</p>
+
+    <form method="post" enctype="multipart/form-data"
+          action="{{ url_for('admin.services') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+      <div class="field mt">
+        <label>Name <span class="req">*</span></label>
+        <input type="text" name="service_name" required maxlength="80"
+               placeholder="e.g. Builder Gel Infill" />
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea name="description" maxlength="400"
+                  placeholder="What is it, and who is it for?"></textarea>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Price (Rs.) <span class="req">*</span></label>
+          <input type="number" name="price" required min="1" max="100000"
+                 placeholder="2500" />
+        </div>
+
+        <div class="field">
+          <label>Duration (minutes) <span class="req">*</span></label>
+          <input type="number" name="duration" required min="15" max="480"
+                 step="15" placeholder="90" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Photo</label>
+        <input type="file" name="image" accept="image/*" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+        <button class="btn btn-gold" type="submit">Add service</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

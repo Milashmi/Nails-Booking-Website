@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Services · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="section-head center reveal">
+    <span class="eyebrow">The menu</span>
+    <h1 class="page-h1">Our <em>services</em></h1>
+    <p class="lede center">
+      Four treatments, each priced by what it actually takes. Longer nails and
+      the more intricate art carry a small surcharge, you will see the exact
+      total before you confirm anything.
+    </p>
+  </div>
+
+  <div class="grid grid-2 stagger">
+    {% for service in services %}
+      <article class="service-card" data-tilt="4">
+        <div class="service-media" style="aspect-ratio:16/10">
+          {% if service.image %}
+            <img src="{{ url_for('static', filename=service.image_url_path) }}"
+                 alt="{{ service.service_name }}" loading="lazy" />
+          {% endif %}
+          <span class="service-price-tag">{{ service.price | rs }}</span>
+        </div>
+
+        <div class="service-body">
+          <h3>{{ service.service_name }}</h3>
+          <p>{{ service.description }}</p>
+
+          <div class="service-meta">
+            <span class="row">{{ icon.clock() }} {{ service.duration_label }}</span>
+            <span class="row">{{ icon.tag() }} {{ service.price | rs }}</span>
+          </div>
+
+          <a class="btn btn-primary btn-block"
+             href="{{ url_for('booking.book', service=service.id) }}">
+            Book {{ service.service_name }} {{ icon.arrow() }}
+          </a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+
+  <!-- what changes the price -->
+  <div class="card mt-lg reveal">
+    <span class="eyebrow">Good to know</span>
+    <h2 class="section-h2" style="margin-bottom:20px">What moves the price</h2>
+
+    <div class="grid grid-3">
+      <div class="value-item">
+        <span class="value-icon">{{ icon.sparkle() }}</span>
+        <div>
+          <h4>The design</h4>
+          <p>Simple finishes are included. Hand-painted florals, chrome and 3D
+             work add between Rs. 250 and Rs. 900.</p>
+        </div>
+      </div>
+
+      <div class="value-item">
+        <span class="value-icon">{{ icon.tag() }}</span>
+        <div>
+          <h4>The length</h4>
+          <p>Short is included. Medium adds Rs. 200, long Rs. 400 and extra long
+             Rs. 700, more product, more sculpting time.</p>
+        </div>
+      </div>
+
+      <div class="value-item">
+        <span class="value-icon">{{ icon.wallet() }}</span>
+        <div>
+          <h4>How you pay</h4>
+          <p>Pay the {{ 500 | rs }} deposit up front by QR, or settle the whole
+             amount at the studio. Either way, nothing is charged twice.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

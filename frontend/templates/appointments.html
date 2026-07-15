@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}My appointments · {{ salon.name }}{% endblock %}
+
+{#
+  One card per booking. Everything a client can do with a booking is here:
+  see whether it is still pending, upload payment proof, reschedule, cancel,
+  and leave a review once it is done.
+#}
+{% macro appointment_card(appt, upcoming) %}
+  <article class="appt-card {{ 'is-cancelled' if appt.status == 'cancelled' }}">
+    <div class="appt-date">
+      <div class="d">{{ appt.booking_date.strftime('%d') }}</div>
+      <div class="m">{{ appt.booking_date.strftime('%b') }}</div>
+      <div class="t">{{ appt.booking_time | clock }}</div>
+    </div>
+
+    <div class="appt-info">
+      <div class="row" style="gap:14px">
+        {% if appt.design %}
+          <img class="appt-thumb"
+               src="{{ url_for('static', filename=appt.design.image_url_path) }}"
+               alt="{{ appt.design.design_name }}" />
+        {% endif %}
+
+        <div>
+          <h3>{{ appt.service.service_name }}</h3>
+          <p class="muted">
+            {% if appt.design %}{{ appt.design.design_name }} · {% endif %}
+            {{ appt.nail_shape }} · {{ appt.nail_length }}
+          </p>
+
+          <div class="appt-tags">
+            {% if appt.status == 'pending' %}
+              <span class="pill pill-warn">{{ icon.clock() }} Awaiting approval</span>
+            {% elif appt.status == 'approved' %}
+              <span class="pill pill-ok">{{ icon.check() }} Confirmed</span>
+            {% elif appt.status == 'completed' %}
+              <span class="pill pill-rose">{{ icon.sparkle() }} Completed</span>
+            {% else %}
+              <span class="pill pill-danger">{{ icon.x() }} Cancelled</span>
+            {% endif %}
+
+            {% if appt.payment %}
+              {% if appt.payment.status == 'verified' %}
+                <span class="pill pill-ok">Advance verified</span>
+              {% elif appt.payment.status == 'settled' %}
+                <span class="pill pill-ok">Paid in full</span>
+              {% elif appt.payment.status == 'rejected' %}
+                <span class="pill pill-danger">Payment rejected</span>
+              {% else %}
+                <span class="pill pill-warn">Payment being checked</span>
+              {% endif %}
+
+              {% if appt.payment.balance and appt.status != 'cancelled' %}
+                <span class="pill">{{ appt.payment.balance | rs }} left to pay</span>
+              {% endif %}
+
+              {% if appt.discount %}
+                <span class="pill pill-rose">
+                  {{ icon.tag() }} Saved {{ appt.discount | rs }}
+                </span>
+              {% endif %}
+
+              {% if appt.payment.refund_due %}
+                <span class="pill {{ 'pill-ok' if appt.payment.refund_paid else 'pill-warn' }}">
+                  {{ icon.wallet() }}
+                  {{ appt.payment.refund_due | rs }} refund
+                  {{ 'sent' if appt.payment.refund_paid else 'on the way' }}
+                </span>
+              {% endif %}
+            {% endif %}
+
+            <!-- the colours, as dots -->
+            {% set colors = [appt.base_color, appt.secondary_color, appt.accent_color] %}
+            {% if colors | select | list %}
+              <span class="summary-dots">
+                {% for color in colors %}
+                  {% if color %}
+                    <i style="background: {{ color.hex_code }}" title="{{ color.color_name }}"></i>
+                  {% endif %}
+                {% endfor %}
+              </span>
+            {% endif %}
+          </div>
+
+          {% if appt.admin_note %}
+            <p class="muted small" style="margin-top:8px;color:var(--danger)">
+              {{ appt.admin_note }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="appt-side">
+      <span class="appt-price metal-text">{{ appt.total_price | rs }}</span>
+
+      {% if appt.can_reschedule %}
+        <a class="btn btn-soft btn-sm"
+           href="{{ url_for('booking.reschedule', appointment_id=appt.id) }}">
+          Reschedule
+        </a>
+      {% endif %}
+
+      {#
+        Every booking already paid its advance, so the only reason to come back
+        here is that the admin could not match the receipt and rejected it.
+      #}
+      {% if appt.status in ('pending', 'approved') and appt.payment
+            and appt.payment.status == 'rejected' %}
+        <button class="btn btn-gold btn-sm" type="button"
+                data-open-modal="pay-{{ appt.id }}">
+          {{ icon.wallet() }} Re-send proof
+        </button>
+      {% endif %}
+
+      {% if appt.can_cancel %}
+        {% set back = (appt.payment.amount // 2)
+                      if appt.payment and appt.payment.status in ('verified', 'settled')
+                      else 0 %}
+        <form method="post"
+              action="{{ url_for('booking.cancel', appointment_id=appt.id) }}"
+              data-confirm="{% if back %}Cancel this appointment? Rs. {{ back }} of your Rs. {{ appt.payment.amount }} advance comes back, the other half is retained.{% else %}Cancel this appointment?{% endif %}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ghost btn-sm" type="submit">Cancel</button>
+        </form>
+      {% endif %}
+
+      {% if appt.can_review %}
+        <button class="btn btn-primary btn-sm" type="button"
+                data-open-modal="review-{{ appt.id }}">
+          {{ icon.star() }} Leave a review
+        </button>
+      {% elif appt.review %}
+        <span class="stars">
+          {% for _ in appt.review.stars %}{{ icon.star() }}{% endfor %}
+        </span>
+      {% endif %}
+    </div>
+  </article>
+
+  <!-- payment modal -->
+  <div class="modal hidden" id="pay-{{ appt.id }}" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <h3>Send your payment proof</h3>
+      <p class="muted">
+        Transfer <strong>{{ deposit | rs }}</strong> using the QR below, then
+        give us the transaction code and a screenshot.
+      </p>
+
+      <div class="qr-box mt" style="max-width:200px;margin:18px auto">
+        <img src="{{ url_for('static', filename='img/payment-qr.jpeg') }}"
+             alt="Scan to pay" width="170" />
+        <p class="qr-note">
+          <strong>{{ salon.esewa_name }}</strong><br />{{ salon.esewa }}
+        </p>
+      </div>
+
+      <form method="post"
+            action="{{ url_for('booking.submit_payment', appointment_id=appt.id) }}"
+            enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+        <div class="field">
+          <label>Transaction code <span class="req">*</span></label>
+          <input type="text" name="transaction_code" required maxlength="60"
+                 placeholder="e.g. ESW8472910384" />
+        </div>
+
+        <div class="field">
+          <label>Screenshot <span class="req">*</span></label>
+          <div class="file-drop" data-file-drop>
+            {{ icon.upload() }}
+            <strong style="font-size:14px">Upload your screenshot</strong>
+            <p class="muted small">PNG or JPG, up to 5 MB</p>
+            <input type="file" name="screenshot" required
+                   accept="image/png,image/jpeg,image/webp" />
+            <p class="file-name"></p>
+            <img class="thumb-preview hidden" alt="Your screenshot" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+          <button class="btn btn-gold" type="submit">Send proof</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- review modal -->
+  {% if appt.can_review %}
+    <div class="modal hidden" id="review-{{ appt.id }}" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card">
+        <h3>How were your nails?</h3>
+        <p class="muted">
+          {{ appt.service.service_name }}
+          {% if appt.design %}· {{ appt.design.design_name }}{% endif %}
+        </p>
+
+        <form method="post"
+              action="{{ url_for('booking.leave_review', appointment_id=appt.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="field mt">
+            <label>Your rating</label>
+            <div class="row">
+              {% for star in [5, 4, 3, 2, 1] %}
+                <label class="check">
+                  <input type="radio" name="rating" value="{{ star }}"
+                         {{ 'required' if loop.first }} />
+                  {{ star }} ★
+                </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="comment-{{ appt.id }}">Your comment (optional)</label>
+            <textarea id="comment-{{ appt.id }}" name="comment" maxlength="600"
+                      placeholder="How did they turn out?"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-gold" type="submit">Post review</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+
+{% block content %}
+<div class="page" style="max-width:1000px">
+  <div class="spread section-head reveal">
+    <div>
+      <span class="eyebrow">Your visits</span>
+      <h1 class="page-h1">My <em>appointments</em></h1>
+    </div>
+    <a class="btn btn-gold" href="{{ url_for('booking.book') }}">
+      Book another {{ icon.arrow() }}
+    </a>
+  </div>
+
+  <!-- upcoming -->
+  <h2 style="font-size:24px;margin-bottom:18px">Coming up</h2>
+
+  {% if upcoming %}
+    <div class="grid stagger" style="gap:16px">
+      {% for appt in upcoming %}
+        {{ appointment_card(appt, true) }}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>Nothing booked yet</h3>
+      <p class="muted">Your next set is nine taps away.</p>
+      <a class="btn btn-gold mt" href="{{ url_for('booking.book') }}">
+        Book an appointment {{ icon.arrow() }}
+      </a>
+    </div>
+  {% endif %}
+
+  <!-- history -->
+  {% if history %}
+    <h2 style="font-size:24px;margin:44px 0 18px">History</h2>
+
+    <div class="grid stagger" style="gap:16px">
+      {% for appt in history %}
+        {{ appointment_card(appt, false) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

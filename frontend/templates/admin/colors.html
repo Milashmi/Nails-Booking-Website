@@ -1,0 +1,128 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Colours · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}The <em>palette</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    These are the colours clients pick from during booking, a base, a
+    secondary and an accent.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="spread" style="margin-bottom:20px">
+  <h2 style="font-size:22px">{{ colors|length }} colours</h2>
+  <button class="btn btn-gold" type="button" data-open-modal="add-color">
+    {{ icon.palette() }} Add a colour
+  </button>
+</div>
+
+<div class="swatch-grid stagger">
+  {% for color in colors %}
+    <div class="swatch" style="{{ 'opacity:.5' if not color.is_active }}">
+      <div class="swatch-chip" style="background: {{ color.hex_code }}"></div>
+
+      <div class="swatch-name">
+        <span>{{ color.color_name }}</span>
+        <code>{{ color.hex_code }}</code>
+      </div>
+
+      <div class="row" style="padding:0 12px 12px">
+        <button class="btn btn-soft btn-sm grow" type="button"
+                data-open-modal="edit-color-{{ color.id }}">
+          {{ icon.edit() }} Edit
+        </button>
+
+        <form method="post"
+              action="{{ url_for('admin.delete_color', color_id=color.id) }}"
+              data-confirm="Remove '{{ color.color_name }}' from the palette?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ghost btn-sm" type="submit">{{ icon.trash() }}</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- edit modal -->
+    <div class="modal hidden" id="edit-color-{{ color.id }}" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card">
+        <h3>Edit {{ color.color_name }}</h3>
+
+        <form method="post"
+              action="{{ url_for('admin.edit_color', color_id=color.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="field mt">
+            <label>Name</label>
+            <input type="text" name="color_name" value="{{ color.color_name }}"
+                   required maxlength="40" />
+          </div>
+
+          <div class="field">
+            <label>Colour</label>
+            <div class="row">
+              <input type="color" value="{{ color.hex_code }}"
+                     data-sync="hex-{{ color.id }}" aria-label="Pick a colour" />
+              <input type="text" name="hex_code" id="hex-{{ color.id }}"
+                     value="{{ color.hex_code }}" required pattern="#[0-9a-fA-F]{6}"
+                     maxlength="7" class="grow" />
+            </div>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" name="is_active" {{ 'checked' if color.is_active }} />
+            Offer this colour to clients
+          </label>
+
+          <div class="modal-actions">
+            <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-gold" type="submit">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- add modal -->
+<div class="modal hidden" id="add-color" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card">
+    <h3>Add a colour</h3>
+
+    <form method="post" action="{{ url_for('admin.colors') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+      <div class="field mt">
+        <label>Name <span class="req">*</span></label>
+        <input type="text" name="color_name" required maxlength="40"
+               placeholder="e.g. Burgundy" />
+      </div>
+
+      <div class="field">
+        <label>Colour <span class="req">*</span></label>
+        <div class="row">
+          <input type="color" value="#b76e79" data-sync="new-hex"
+                 aria-label="Pick a colour" />
+          <input type="text" name="hex_code" id="new-hex" value="#b76e79" required
+                 pattern="#[0-9a-fA-F]{6}" maxlength="7" class="grow" />
+        </div>
+        <p class="hint">Pick from the swatch, or type a hex code like #b76e79.</p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+        <button class="btn btn-gold" type="submit">Add colour</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

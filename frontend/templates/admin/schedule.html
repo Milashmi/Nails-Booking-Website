@@ -1,0 +1,107 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Closed days · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}Closed <em>days</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Close off a date and it vanishes from the booking calendar, clients cannot
+    even click it. Saturdays are already closed every week.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="grid grid-2">
+  <!-- close a date -->
+  <div class="card">
+    <span class="eyebrow">Close a date</span>
+    <h3 style="font-size:21px;margin:8px 0 16px">Take a day off</h3>
+
+    <form method="post" action="{{ url_for('admin.schedule') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+      <div class="field">
+        <label for="date">Date <span class="req">*</span></label>
+        <input type="date" id="date" name="date" required min="{{ today }}" />
+      </div>
+
+      <div class="field">
+        <label for="reason">Reason (only you see this)</label>
+        <input type="text" id="reason" name="reason" maxlength="120"
+               placeholder="e.g. Dashain, family trip, restocking" />
+      </div>
+
+      <button class="btn btn-gold btn-block" type="submit">
+        {{ icon.clock() }} Close this date
+      </button>
+    </form>
+
+    <p class="muted small mt">
+      Closing a date does not touch bookings that are already confirmed on it, you will see a warning if there are any, and you can cancel them yourself.
+    </p>
+  </div>
+
+  <!-- what's closed -->
+  <div class="card">
+    <span class="eyebrow">Coming up</span>
+    <h3 style="font-size:21px;margin:8px 0 16px">
+      {{ blocked|length }} closed date{{ 's' if blocked|length != 1 }}
+    </h3>
+
+    {% if blocked %}
+      {% for row in blocked %}
+        <div class="spread" style="padding:12px 0;border-bottom:1px dashed var(--line)">
+          <div>
+            <div style="font-weight:500">{{ row.date | nice_date }}</div>
+            <div class="muted small">
+              {{ row.reason or 'No reason given' }}
+
+              {% if clashes.get(row.date) %}
+                · <span style="color:var(--danger)">
+                    {{ clashes[row.date] }} booking(s) still confirmed that day
+                  </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <form method="post"
+                action="{{ url_for('admin.unblock_date', blocked_id=row.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button class="btn btn-ghost btn-sm" type="submit">Reopen</button>
+          </form>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">Nothing closed. The calendar is wide open.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- the weekly pattern, for reference -->
+<div class="card mt">
+  <span class="eyebrow">Every week</span>
+  <h3 style="font-size:21px;margin:8px 0 16px">The standard week</h3>
+
+  {% set week = [
+    ('Sunday', true), ('Monday', true), ('Tuesday', true), ('Wednesday', true),
+    ('Thursday', true), ('Friday', true), ('Saturday', false)
+  ] %}
+
+  <div class="row wrap">
+    {% for day, open in week %}
+      <span class="pill {{ 'pill-ok' if open else 'pill-danger' }}">
+        {{ day }} · {{ '10:00 – 18:00' if open else 'Closed' }}
+      </span>
+    {% endfor %}
+  </div>
+
+  <p class="muted small mt">
+    To change the weekly pattern or the opening hours, edit
+    <code>OPEN_HOUR</code>, <code>CLOSE_HOUR</code> and
+    <code>CLOSED_WEEKDAYS</code> in <code>backend/config.py</code>.
+  </p>
+</div>
+
+{% endblock %}

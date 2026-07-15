@@ -1,0 +1,77 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Reviews · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}Client <em>reviews</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Hide a review to take it off the site without destroying it, or delete it
+    outright.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="grid grid-2 stagger">
+  {% for review in reviews %}
+    <article class="quote-card" style="{{ 'opacity:.55' if not review.is_visible }}">
+      <div class="spread">
+        <span class="stars">
+          {% for _ in review.stars %}{{ icon.star() }}{% endfor %}
+        </span>
+
+        {% if review.is_visible %}
+          <span class="pill pill-ok">On the site</span>
+        {% else %}
+          <span class="pill">Hidden</span>
+        {% endif %}
+      </div>
+
+      {% if review.comment %}
+        <p>“{{ review.comment }}”</p>
+      {% else %}
+        <p class="muted">No comment, just the rating.</p>
+      {% endif %}
+
+      <div class="quote-who">
+        <span class="quote-avatar">{{ review.user.initials }}</span>
+        <div class="grow">
+          <div style="font-size:14px;font-weight:500">{{ review.user.full_name }}</div>
+          <div class="muted small">
+            {% if review.appointment and review.appointment.service %}
+              {{ review.appointment.service.service_name }} ·
+            {% endif %}
+            {{ review.created_at.strftime('%d %b %Y') }}
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <form method="post"
+              action="{{ url_for('admin.toggle_review', review_id=review.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-soft btn-sm" type="submit">
+            {{ 'Hide from the site' if review.is_visible else 'Show on the site' }}
+          </button>
+        </form>
+
+        <form method="post"
+              action="{{ url_for('admin.delete_review', review_id=review.id) }}"
+              data-confirm="Delete this review for good?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {{ icon.trash() }} Delete
+          </button>
+        </form>
+      </div>
+    </article>
+  {% else %}
+    <div class="empty" style="grid-column:1/-1">
+      <h3>No reviews yet</h3>
+      <p class="muted">They appear here as soon as clients start leaving them.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

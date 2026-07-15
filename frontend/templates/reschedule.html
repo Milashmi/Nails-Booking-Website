@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% import 'partials/icons.html' as icon %}
+{% block title %}Reschedule · {{ salon.name }}{% endblock %}
+
+{% block content %}
+<div class="narrow">
+  <div class="section-head reveal">
+    <span class="eyebrow">Appointment #{{ appt.id }}</span>
+    <h1 class="page-h1">Move your <em>appointment</em></h1>
+    <p class="lede">
+      Currently {{ appt.booking_date | nice_date }} at {{ appt.booking_time | clock }}.
+      Pick a new slot below, the change goes back to Eleanora to confirm.
+    </p>
+  </div>
+
+  <form method="post" id="reschedule-form"
+        action="{{ url_for('booking.reschedule', appointment_id=appt.id) }}"
+        data-service="{{ appt.service_id }}" data-exclude="{{ appt.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="booking_date" id="f-date" />
+    <input type="hidden" name="booking_time" id="f-time" />
+
+    <div class="card reveal" style="margin-bottom:22px">
+      <h3 style="font-size:20px;margin-bottom:6px">Choose a new date</h3>
+      <p class="muted" style="margin-bottom:16px">
+        Only days with room for a {{ appt.duration }}-minute
+        {{ appt.service.service_name }} are shown.
+      </p>
+
+      <div class="date-grid" id="date-grid">
+        <div class="loading"><span class="spinner"></span>Loading the calendar…</div>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-bottom:22px">
+      <h3 style="font-size:20px;margin-bottom:16px">Choose a new time</h3>
+      <div class="time-grid" id="time-grid">
+        <p class="muted">Pick a date first.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-gold btn-lg" type="submit" id="reschedule-submit" disabled>
+        Move appointment {{ icon.check() }}
+      </button>
+      <a class="btn btn-ghost" href="{{ url_for('booking.my_appointments') }}">
+        Never mind
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reschedule.js') }}"></script>
+{% endblock %}

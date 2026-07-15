@@ -1,0 +1,151 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+{% from 'admin/_appt.html' import admin_appointment %}
+
+{% block title %}Dashboard · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Overview{% endblock %}
+{% block admin_title %}Good to see you, <em>{{ current_user.first_name }}</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    {% if stats.pending %}
+      <strong>{{ stats.pending }}</strong> booking{{ 's' if stats.pending != 1 }}
+      waiting on you, and
+    {% endif %}
+    <strong>{{ stats.today }}</strong> appointment{{ 's' if stats.today != 1 }} in
+    the diary today.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<!-- the numbers -->
+<div class="grid grid-4 stagger" style="margin-bottom:30px">
+  <div class="stat-card">
+    <div class="k">Customers</div>
+    <div class="v"><span data-count="{{ stats.users }}">0</span></div>
+    <div class="sub">registered accounts</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="k">Bookings</div>
+    <div class="v"><span data-count="{{ stats.bookings }}">0</span></div>
+    <div class="sub">{{ stats.pending }} awaiting approval</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="k">Today</div>
+    <div class="v"><span data-count="{{ stats.today }}">0</span></div>
+    <div class="sub">confirmed for today</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="k">Earned</div>
+    <div class="v metal-text" style="font-size:30px">{{ stats.earned | rs }}</div>
+    <div class="sub">from completed sets</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:30px">
+  <!-- bookings over the last fortnight -->
+  <div class="card">
+    <span class="eyebrow">Last 14 days</span>
+    <h3 style="font-size:21px;margin:8px 0 4px">Bookings taken</h3>
+
+    {% set peak = chart | map(attribute='value') | max %}
+    <div class="chart">
+      {% for bar in chart %}
+        <div class="chart-bar" title="{{ bar.label }}: {{ bar.value }}">
+          <span class="bar"
+                style="height: {{ (bar.value / peak * 100) if peak else 2 }}%;
+                       animation-delay: {{ loop.index0 * 0.04 }}s"></span>
+          <span class="lbl">{{ bar.label.split(' ')[0] }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- today's diary -->
+  <div class="card">
+    <span class="eyebrow">Today</span>
+    <h3 style="font-size:21px;margin:8px 0 14px">The diary</h3>
+
+    {% if todays %}
+      {% for appt in todays %}
+        <div class="spread" style="padding:11px 0;border-bottom:1px dashed var(--line)">
+          <div class="row">
+            <span class="pill pill-rose">{{ appt.booking_time | clock }}</span>
+            <div>
+              <div style="font-size:14.5px;font-weight:500">{{ appt.user.full_name }}</div>
+              <div class="muted small">
+                {{ appt.service.service_name }} · {{ appt.duration }} mins
+              </div>
+            </div>
+          </div>
+          <span class="metal-text" style="font-weight:600">{{ appt.total_price | rs }}</span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">Nothing booked today. Enjoy the quiet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- the queue -->
+<div class="spread" style="margin-bottom:16px">
+  <h2 style="font-size:24px">
+    Waiting for you
+    {% if pending %}<span class="badge-dot">{{ pending|length }}</span>{% endif %}
+  </h2>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.appointments') }}">
+    All appointments {{ icon.arrow() }}
+  </a>
+</div>
+
+{% if pending %}
+  <p class="muted" style="margin-bottom:16px">
+    Nothing is held until you approve it, check the transaction code and the
+    screenshot before you do.
+  </p>
+
+  {% for appt in pending %}
+    {{ admin_appointment(appt) }}
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <h3>All caught up</h3>
+    <p class="muted">No bookings are waiting on you.</p>
+  </div>
+{% endif %}
+
+<!-- what's coming -->
+{% if upcoming %}
+  <h2 style="font-size:24px;margin:36px 0 16px">Coming up</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>When</th><th>Client</th><th>Service</th><th>Design</th><th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for appt in upcoming %}
+          <tr>
+            <td>
+              <strong>{{ appt.booking_date | nice_date }}</strong><br />
+              <span class="muted small">{{ appt.booking_time | clock }}</span>
+            </td>
+            <td>{{ appt.user.full_name }}</td>
+            <td>{{ appt.service.service_name }}</td>
+            <td class="muted">
+              {{ appt.design.design_name if appt.design else ', ' }}
+            </td>
+            <td><strong>{{ appt.total_price | rs }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+{% endblock %}

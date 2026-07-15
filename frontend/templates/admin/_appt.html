@@ -1,0 +1,230 @@
+{#
+  One booking, as the owner sees it: who, what, when, what they paid, and every
+  action she can take on it. Shared by the dashboard and the appointments page
+  so the two never drift apart.
+#}
+{% import 'partials/icons.html' as icon %}
+
+{% macro admin_appointment(appt) %}
+  <article class="card" style="margin-bottom:14px;padding:20px">
+    <div class="spread" style="align-items:flex-start">
+      <!-- who + what -->
+      <div class="row" style="gap:16px;align-items:flex-start">
+        {% if appt.design %}
+          <img class="appt-thumb"
+               src="{{ url_for('static', filename=appt.design.image_url_path) }}"
+               alt="{{ appt.design.design_name }}"
+               data-lightbox="{{ url_for('static', filename=appt.design.image_url_path) }}" />
+        {% endif %}
+
+        <div>
+          <div class="row" style="gap:9px">
+            <h3 style="font-size:19px">{{ appt.service.service_name }}</h3>
+            <span class="muted small">#{{ appt.id }}</span>
+          </div>
+
+          <p class="muted" style="font-size:13.5px">
+            {% if appt.design %}{{ appt.design.design_name }} · {% endif %}
+            {{ appt.nail_shape }} · {{ appt.nail_length }} · {{ appt.duration }} mins
+          </p>
+
+          <div class="appt-tags">
+            <span class="pill">{{ icon.user() }} {{ appt.user.full_name }}</span>
+            <span class="pill">{{ icon.phone() }} {{ appt.user.phone or ', ' }}</span>
+            <span class="pill pill-rose">
+              {{ icon.calendar() }}
+              {{ appt.booking_date | nice_date }} · {{ appt.booking_time | clock }}
+            </span>
+
+            {% if appt.status == 'pending' %}
+              <span class="pill pill-warn">Pending</span>
+            {% elif appt.status == 'approved' %}
+              <span class="pill pill-ok">Confirmed</span>
+            {% elif appt.status == 'completed' %}
+              <span class="pill pill-rose">Completed</span>
+            {% else %}
+              <span class="pill pill-danger">Cancelled</span>
+            {% endif %}
+
+            {% set colors = [appt.base_color, appt.secondary_color, appt.accent_color] %}
+            <span class="summary-dots">
+              {% for color in colors %}
+                {% if color %}
+                  <i style="background: {{ color.hex_code }}" title="{{ color.color_name }}"></i>
+                {% endif %}
+              {% endfor %}
+            </span>
+          </div>
+
+          {% if appt.notes %}
+            <p class="muted small" style="margin-top:9px">
+              <strong>Note from the client:</strong> {{ appt.notes }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="text-align:right">
+        <div class="appt-price metal-text">{{ appt.total_price | rs }}</div>
+        <div class="muted small">{{ appt.user.email }}</div>
+      </div>
+    </div>
+
+    <!-- the advance they sent in -->
+    {% set pay = appt.payment %}
+    {% if pay %}
+      <div class="proof" style="margin-top:16px;align-items:flex-start">
+        {% if pay.screenshot %}
+          <img src="{{ url_for('static', filename='uploads/' ~ pay.screenshot) }}"
+               alt="Payment screenshot"
+               data-lightbox="{{ url_for('static', filename='uploads/' ~ pay.screenshot) }}" />
+        {% else %}
+          <span class="value-icon">{{ icon.wallet() }}</span>
+        {% endif %}
+
+        <div class="grow">
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <strong style="font-size:14px">
+              Advance {{ pay.amount | rs }}
+              {% if pay.balance %}
+                <span class="muted">· {{ pay.balance | rs }} balance</span>
+              {% endif %}
+            </strong>
+
+            {% if pay.status == 'verified' %}
+              <span class="pill pill-ok">{{ icon.check() }} Verified</span>
+            {% elif pay.status == 'settled' %}
+              <span class="pill pill-ok">Paid in full</span>
+            {% elif pay.status == 'rejected' %}
+              <span class="pill pill-danger">{{ icon.x() }} Rejected</span>
+            {% else %}
+              <span class="pill pill-warn">Not checked yet</span>
+            {% endif %}
+
+            {% if appt.discount %}
+              <span class="pill pill-rose">
+                {{ icon.tag() }}
+                {{ appt.promo.code if appt.promo else 'Promo' }}
+                −{{ appt.discount | rs }}
+              </span>
+            {% endif %}
+          </div>
+
+          <p class="muted small" style="margin-top:5px">
+            Transaction code: <code>{{ pay.transaction_code or ', ' }}</code>
+          </p>
+
+          {#
+            What the automated read made of the receipt. It is a hint that tells
+            the owner where to look, never a decision. She still approves.
+          #}
+          {% if pay.ocr_checked %}
+            {% if pay.ocr_all_ok %}
+              <div class="ocr ocr-ok">
+                <span class="ocr-row">
+                  {{ icon.scan() }}
+                  <strong>Receipt checks out</strong>
+                </span>
+                <span class="ocr-row">
+                  {{ icon.check() }} eSewa number, {{ pay.amount | rs }} and a
+                  success confirmation were all found in the image.
+                </span>
+              </div>
+            {% else %}
+              <div class="ocr ocr-bad">
+                <span class="ocr-row">
+                  {{ icon.scan() }}
+                  <strong>Check this one by eye</strong>
+                </span>
+                {% for flag in pay.ocr_flags %}
+                  <span class="ocr-row">{{ icon.x() }} {{ flag }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endif %}
+
+          <!-- a refund we owe on a cancelled booking -->
+          {% if pay.refund_due %}
+            <div class="ocr {{ 'ocr-ok' if pay.refund_paid else 'ocr-bad' }}">
+              <span class="ocr-row">
+                {{ icon.wallet() }}
+                <strong>
+                  {% if pay.refund_paid %}
+                    Refund of {{ pay.refund_due | rs }} sent
+                  {% else %}
+                    Refund of {{ pay.refund_due | rs }} owed to this client
+                  {% endif %}
+                </strong>
+              </span>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- what she can do about the money -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          {% if pay.status == 'pending' %}
+            <form method="post" style="display:flex;gap:6px"
+                  action="{{ url_for('admin.review_payment', appointment_id=appt.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button class="btn btn-ok btn-sm" name="decision" value="verify" type="submit">
+                {{ icon.check() }} Verify
+              </button>
+              <button class="btn btn-danger btn-sm" name="decision" value="reject" type="submit">
+                {{ icon.x() }} Reject
+              </button>
+            </form>
+          {% endif %}
+
+          {% if pay.refund_due and not pay.refund_paid %}
+            <form method="post"
+                  action="{{ url_for('admin.review_payment', appointment_id=appt.id) }}"
+                  data-confirm="Mark the {{ pay.refund_due | rs }} refund as sent?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button class="btn btn-soft btn-sm" name="decision" value="refunded"
+                      type="submit">
+                {{ icon.wallet() }} Mark refunded
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- what she can do with it -->
+    <div class="row wrap" style="margin-top:16px">
+      {% if appt.status == 'pending' %}
+        <form method="post" action="{{ url_for('admin.approve', appointment_id=appt.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ok btn-sm" type="submit">
+            {{ icon.check() }} Approve &amp; hold the slot
+          </button>
+        </form>
+      {% endif %}
+
+      {% if appt.status == 'approved' %}
+        <form method="post" action="{{ url_for('admin.complete', appointment_id=appt.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-primary btn-sm" type="submit">
+            {{ icon.sparkle() }} Mark completed
+          </button>
+        </form>
+      {% endif %}
+
+      {% if appt.status in ('pending', 'approved') %}
+        <form method="post" action="{{ url_for('admin.cancel', appointment_id=appt.id) }}"
+              data-confirm="Cancel booking #{{ appt.id }}? The slot will be freed.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {{ icon.x() }} Cancel
+          </button>
+        </form>
+      {% endif %}
+
+      {% if appt.review %}
+        <span class="stars" style="margin-left:auto">
+          {% for _ in appt.review.stars %}{{ icon.star() }}{% endfor %}
+        </span>
+      {% endif %}
+    </div>
+  </article>
+{% endmacro %}

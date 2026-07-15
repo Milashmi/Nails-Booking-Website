@@ -1,0 +1,79 @@
+{% import 'partials/icons.html' as icon %}
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="{{ url_for('main.index') }}" class="brand">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ salon.name }}" />
+      <span class="brand-text">
+        <span class="brand-name">Eleanora</span>
+        <span class="brand-sub">Nail Studio</span>
+      </span>
+    </a>
+
+    <div class="nav-links" id="nav-links">
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.index' }}" href="{{ url_for('main.index') }}">Home</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.about' }}" href="{{ url_for('main.about') }}">About</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.services' }}" href="{{ url_for('main.services') }}">Services</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.gallery' }}" href="{{ url_for('main.gallery') }}">Gallery</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.colors' }}" href="{{ url_for('main.colors') }}">Colours</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'booking.book' }}" href="{{ url_for('booking.book') }}">Book</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.contact' }}" href="{{ url_for('main.contact') }}">Contact</a>
+    </div>
+
+    <div class="nav-actions">
+      <button class="icon-btn" id="theme-toggle" aria-label="Switch between light and dark">
+        <span class="icon-sun">{{ icon.sun() }}</span>
+        <span class="icon-moon">{{ icon.moon() }}</span>
+      </button>
+
+      {% if current_user.is_authenticated %}
+        <a class="icon-btn bell" href="{{ url_for('booking.notifications') }}"
+           aria-label="Notifications">
+          {{ icon.bell() }}
+          {% if unread_count %}
+            <span class="bell-dot">{{ unread_count if unread_count < 10 else '9+' }}</span>
+          {% endif %}
+        </a>
+
+        <div class="account">
+          <button class="avatar" data-menu-btn="account-menu" aria-label="Your account">
+            {% if current_user.avatar %}
+              <img src="{{ url_for('static', filename='uploads/' ~ current_user.avatar) }}" alt="" />
+            {% else %}
+              {{ current_user.initials }}
+            {% endif %}
+          </button>
+
+          <div class="menu hidden" id="account-menu">
+            <div class="menu-head">
+              <div class="menu-name">{{ current_user.full_name }}</div>
+              <div class="muted small">{{ current_user.email }}</div>
+            </div>
+
+            {% if current_user.is_admin %}
+              <a href="{{ url_for('admin.dashboard') }}">
+                {{ icon.chart() }} Dashboard
+                {% if pending_count %}<span class="badge-dot">{{ pending_count }}</span>{% endif %}
+              </a>
+            {% endif %}
+
+            <a href="{{ url_for('booking.my_appointments') }}">{{ icon.calendar() }} My appointments</a>
+            <a href="{{ url_for('booking.notifications') }}">
+              {{ icon.bell() }} Notifications
+              {% if unread_count %}<span class="badge-dot">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('auth.profile') }}">{{ icon.user() }} Profile & security</a>
+            <a href="{{ url_for('auth.logout') }}">{{ icon.logout() }} Log out</a>
+          </div>
+        </div>
+      {% else %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.login') }}">Log in</a>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('booking.book') }}">Book now</a>
+      {% endif %}
+
+      <button class="icon-btn nav-toggle" id="nav-toggle" aria-label="Open the menu">
+        {{ icon.menu() }}
+      </button>
+    </div>
+  </div>
+</nav>

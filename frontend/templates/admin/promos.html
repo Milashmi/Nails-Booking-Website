@@ -1,0 +1,172 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Promo codes · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Manage{% endblock %}
+{% block admin_title %}Promo <em>codes</em>{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Generate a discount code, hand it out, and watch it get claimed. A code can
+    expire, be limited to a number of uses, or need a minimum spend.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="spread" style="margin-bottom:20px">
+  <h2 style="font-size:22px">{{ promos|length }} codes</h2>
+  <button class="btn btn-gold" type="button" data-open-modal="add-promo">
+    {{ icon.percent() }} Create a code
+  </button>
+</div>
+
+{% if promos %}
+  <div class="grid grid-2 stagger">
+    {% for promo in promos %}
+      <article class="promo-card {{ 'dead' if not promo.is_usable }}">
+        <div class="spread" style="margin-bottom:12px">
+          <div>
+            <div class="promo-code metal-text">{{ promo.code }}</div>
+            <p class="muted small">{{ promo.description or 'No description' }}</p>
+          </div>
+          <div class="promo-value metal-text">{{ promo.label }}</div>
+        </div>
+
+        <div class="row wrap" style="margin-bottom:14px">
+          {% if not promo.is_active %}
+            <span class="pill">Switched off</span>
+          {% elif promo.is_expired %}
+            <span class="pill pill-danger">Expired</span>
+          {% elif promo.is_used_up %}
+            <span class="pill pill-danger">Fully claimed</span>
+          {% else %}
+            <span class="pill pill-ok">{{ icon.check() }} Live</span>
+          {% endif %}
+
+          <span class="pill">
+            {{ promo.used_count }}{% if promo.usage_limit %} / {{ promo.usage_limit }}{% endif %} used
+          </span>
+
+          {% if promo.min_spend %}
+            <span class="pill">Min {{ promo.min_spend | rs }}</span>
+          {% endif %}
+          {% if promo.max_discount %}
+            <span class="pill">Max {{ promo.max_discount | rs }} off</span>
+          {% endif %}
+          {% if promo.expires_on %}
+            <span class="pill">Until {{ promo.expires_on | nice_date }}</span>
+          {% endif %}
+        </div>
+
+        <div class="row">
+          <form method="post"
+                action="{{ url_for('admin.toggle_promo', promo_id=promo.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button class="btn btn-soft btn-sm" type="submit">
+              {{ 'Switch off' if promo.is_active else 'Switch on' }}
+            </button>
+          </form>
+
+          <form method="post"
+                action="{{ url_for('admin.delete_promo', promo_id=promo.id) }}"
+                data-confirm="Delete {{ promo.code }}?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button class="btn btn-ghost btn-sm" type="submit">
+              {{ icon.trash() }} Delete
+            </button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">
+    <h3>No codes yet</h3>
+    <p class="muted">Create one and start handing out discounts.</p>
+  </div>
+{% endif %}
+
+<!-- create modal -->
+<div class="modal hidden" id="add-promo" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card wide-modal">
+    <h3>Create a promo code</h3>
+    <p class="muted">Leave the code blank and we'll generate one for you.</p>
+
+    <form method="post" action="{{ url_for('admin.promos') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+      <div class="field mt">
+        <label for="code">Code</label>
+        <input type="text" id="code" name="code" maxlength="24"
+               placeholder="{{ suggested }}"
+               style="text-transform:uppercase;letter-spacing:.08em" />
+        <p class="hint">
+          Letters, numbers, - and _ only. Leave it empty for a random one like
+          <code>{{ suggested }}</code>.
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="description">What is it for?</label>
+        <input type="text" id="description" name="description" maxlength="140"
+               placeholder="e.g. Festival offer for returning clients" />
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="kind">Type</label>
+          <select id="kind" name="kind">
+            <option value="percent">Percentage off</option>
+            <option value="flat">Flat rupees off</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="value">Amount <span class="req">*</span></label>
+          <input type="number" id="value" name="value" required min="1"
+                 max="100000" placeholder="10" />
+          <p class="hint">e.g. 10 for 10%, or 500 for Rs. 500 off.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="max_discount">Cap the discount at (Rs.)</label>
+          <input type="number" id="max_discount" name="max_discount" min="0"
+                 max="100000" placeholder="0 = no cap" />
+          <p class="hint">
+            Stops a % code taking a fortune off an expensive set.
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="min_spend">Minimum spend (Rs.)</label>
+          <input type="number" id="min_spend" name="min_spend" min="0"
+                 max="100000" placeholder="0 = any" />
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="usage_limit">How many times can it be used?</label>
+          <input type="number" id="usage_limit" name="usage_limit" min="0"
+                 max="10000" placeholder="0 = unlimited" />
+        </div>
+
+        <div class="field">
+          <label for="expires_on">Expires on</label>
+          <input type="date" id="expires_on" name="expires_on" min="{{ today }}" />
+          <p class="hint">Leave empty for no expiry.</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+        <button class="btn btn-gold" type="submit">Create code</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
