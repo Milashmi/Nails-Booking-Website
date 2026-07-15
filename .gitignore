@@ -1,0 +1,25 @@
+# --- secrets ---
+.env
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- user-uploaded files (payment screenshots, avatars, admin uploads) ---
+# The folder is kept, its contents are not committed.
+frontend/static/uploads/*
+!frontend/static/uploads/.gitkeep
+
+# --- logs ---
+*.log
+
+# --- editors / OS ---
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# --- local tooling ---
+.claude/
