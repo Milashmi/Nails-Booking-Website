@@ -1,0 +1,25 @@
+# ---- Eleanora Nails backend dependencies ----
+Flask==3.0.3              # web framework
+Flask-SQLAlchemy==3.1.1   # ORM for talking to MySQL
+Flask-Login==0.6.3        # user session management
+Flask-WTF==1.2.1          # CSRF protection on every form
+Flask-Limiter==3.8.0      # per-IP rate limiting on sensitive endpoints
+PyMySQL==1.1.1            # MySQL driver (pure python)
+cryptography==43.0.1      # required by PyMySQL for sha256 auth
+pyotp==2.9.0              # TOTP 2FA code generation / verification
+qrcode==7.4.2             # builds the QR image for authenticator apps
+Pillow==10.4.0            # image handling (uploads + QR rendering)
+email-validator==2.2.0    # validate email addresses on signup
+python-dotenv==1.0.1      # load config from a .env file
+
+# ---- Optional: reading the payment screenshot ----
+# This python package is safe to install anywhere, but it needs the separate
+# Tesseract ENGINE to actually do anything:
+#     Windows:  winget install UB-Mannheim.TesseractOCR
+#     macOS:    brew install tesseract
+#     Ubuntu:   sudo apt install tesseract-ocr
+#
+# If the engine is missing, the app detects that at startup, logs one line, and
+# runs exactly as normal with screenshot-reading switched off. It never crashes,
+# so the site deploys fine on a machine that has no OCR at all.
+pytesseract==0.3.13
