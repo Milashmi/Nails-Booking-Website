@@ -93,6 +93,74 @@ def dashboard():
                            todays=todays, upcoming=upcoming, chart=chart)
 
 
+# ----------------------------------------------------------------- analytics
+
+def _month_bounds(months_back):
+    """(start, end, label) for each of the last `months_back` calendar months,
+    oldest first. `end` is exclusive, so a booking on the 1st of `end` never
+    gets double-counted between two adjacent months."""
+    cursor = date.today().replace(day=1)
+    bounds = []
+    for _ in range(months_back):
+        prev = (cursor.replace(year=cursor.year - 1, month=12) if cursor.month == 1
+                else cursor.replace(month=cursor.month - 1))
+        bounds.append((prev, cursor, prev.strftime("%b %Y")))
+        cursor = prev
+    bounds.reverse()
+    return bounds
+
+
+@admin_bp.route("/analytics")
+@login_required
+@admin_required
+def analytics():
+    """Revenue and booking trends, plus which services and designs actually
+    earn their keep -- the numbers the owner cannot get from the diary view."""
+    months = _month_bounds(6)
+
+    bookings_chart, revenue_chart = [], []
+    for start, end, label in months:
+        in_month = Appointment.query.filter(Appointment.booking_date >= start,
+                                            Appointment.booking_date < end)
+        bookings_chart.append({"label": label, "value": in_month.count()})
+
+        earned = (in_month.filter(Appointment.status == STATUS_COMPLETED)
+                  .with_entities(
+                      func.coalesce(func.sum(Appointment.total_price), 0))
+                  .scalar())
+        revenue_chart.append({"label": label, "value": int(earned or 0)})
+
+    # Which services actually bring in the money, not just get booked.
+    service_rows = (db.session.query(
+            Service.service_name,
+            func.count(Appointment.id),
+            func.coalesce(func.sum(Appointment.total_price), 0))
+        .join(Appointment, Appointment.service_id == Service.id)
+        .filter(Appointment.status == STATUS_COMPLETED)
+        .group_by(Service.service_name)
+        .order_by(func.sum(Appointment.total_price).desc())
+        .all())
+    top_services = [{"name": name, "bookings": count, "revenue": int(revenue)}
+                    for name, count, revenue in service_rows]
+
+    # The designs customers actually pick, regardless of how the booking ended.
+    design_rows = (db.session.query(Design.design_name,
+                                    func.count(Appointment.id))
+        .join(Appointment, Appointment.design_id == Design.id)
+        .group_by(Design.design_name)
+        .order_by(func.count(Appointment.id).desc())
+        .limit(8)
+        .all())
+    top_designs = [{"name": name, "bookings": count}
+                   for name, count in design_rows]
+
+    return render_template("admin/analytics.html",
+                           bookings_chart=bookings_chart,
+                           revenue_chart=revenue_chart,
+                           top_services=top_services,
+                           top_designs=top_designs)
+
+
 # ------------------------------------------------------------ appointments
 
 @admin_bp.route("/appointments")
