@@ -286,9 +286,9 @@ the full list under **Admin → Customers**.
 
 ### Admin — owner only
 
-`/admin` · `/admin/appointments` · `/admin/services` · `/admin/designs` ·
-`/admin/colors` · `/admin/promos` · `/admin/schedule` · `/admin/users` ·
-`/admin/reviews`
+`/admin` · `/admin/analytics` · `/admin/appointments` · `/admin/services` ·
+`/admin/designs` · `/admin/colors` · `/admin/promos` · `/admin/schedule` ·
+`/admin/users` · `/admin/reviews`
 
 ---
 
@@ -501,6 +501,15 @@ there is no part of the site she has to ask a developer to change.
 - **Today's diary** — who is coming, at what time, for what
 - **The queue** — every booking waiting for her, with the transaction code and
   the payment screenshot right there to check (click to enlarge)
+
+### Analytics
+- Bookings taken and revenue earned, charted over the last 6 calendar months
+- **Top services**, ranked by completed revenue (not just booking count) —
+  the treatment that gets booked the most isn't always the one that earns
+  the most
+- **Most-picked designs**, across every booking status
+- **Export to CSV** — every appointment or every customer, one click, for
+  the owner's own records or an accountant
 
 ### Manage appointments
 Filter by pending / confirmed / completed / cancelled. On each booking:
