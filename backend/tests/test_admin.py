@@ -254,6 +254,48 @@ class TestAnalytics:
         assert catalogue["service"].service_name.encode() in resp.data
         assert b"Rs. 3,000" in resp.data
 
+    def test_top_customers_ranks_by_lifetime_spend(self, client, admin_user,
+                                                    customer_user, catalogue):
+        from models import User
+        big_spender = User(full_name="Big Spender", email="big@example.com")
+        big_spender.set_password("Password@123")
+        db.session.add(big_spender)
+        db.session.commit()
+
+        for user, price, day_offset in (
+                (customer_user, 1000, 2),
+                (big_spender, 5000, 3)):
+            db.session.add(Appointment(
+                user_id=user.id, service_id=catalogue["service"].id,
+                design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+                nail_shape="Almond", nail_length="Short",
+                booking_date=date.today() - timedelta(days=day_offset),
+                booking_time=time(11, 0), duration=90, total_price=price,
+                status="completed"))
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/analytics")
+        text = resp.data.decode()
+        assert "Big Spender" in text
+        # The bigger spender's row must come first.
+        assert text.index("Big Spender") < text.index(customer_user.full_name)
+
+    def test_top_customers_ignores_uncompleted_bookings(self, client, admin_user,
+                                                         customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending")
+        db.session.add(appt)
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/analytics")
+        assert b"Nothing completed yet" in resp.data
+
     def test_pending_booking_is_not_counted_as_revenue(self, client, admin_user,
                                                         customer_user, catalogue):
         """Only completed bookings count as earned revenue -- a pending one
