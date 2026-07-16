@@ -354,7 +354,8 @@ class TestCsvExport:
         assert resp.headers["Content-Type"].startswith("text/csv")
 
         lines = resp.data.decode().splitlines()
-        assert lines[0] == "ID,Name,Email,Phone,Bookings,2FA enabled,Joined"
+        assert lines[0] == ("ID,Name,Email,Phone,Bookings,Lifetime spend (Rs.),"
+                            "2FA enabled,Joined")
         assert any(customer_user.email in line for line in lines[1:])
         # The admin account itself is not a customer, so it must not appear.
         assert not any(admin_user.email in line for line in lines[1:])

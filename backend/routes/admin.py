@@ -714,15 +714,23 @@ def export_customers_csv():
     counts = dict(db.session.query(Appointment.user_id,
                                    func.count(Appointment.id))
                   .group_by(Appointment.user_id).all())
+    # Lifetime spend, same figure the Top Customers table on /admin/analytics
+    # ranks by -- only completed bookings count as money actually earned.
+    spend = dict(db.session.query(
+            Appointment.user_id,
+            func.coalesce(func.sum(Appointment.total_price), 0))
+        .filter(Appointment.status == STATUS_COMPLETED)
+        .group_by(Appointment.user_id).all())
 
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["ID", "Name", "Email", "Phone", "Bookings",
-                     "2FA enabled", "Joined"])
+                     "Lifetime spend (Rs.)", "2FA enabled", "Joined"])
     for user in rows:
         writer.writerow([
             user.id, user.full_name, user.email, user.phone or "",
-            counts.get(user.id, 0), "Yes" if user.totp_enabled else "No",
+            counts.get(user.id, 0), int(spend.get(user.id, 0)),
+            "Yes" if user.totp_enabled else "No",
             user.created_at.strftime("%Y-%m-%d"),
         ])
 
