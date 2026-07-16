@@ -14,13 +14,15 @@ The FIRST account registered becomes the admin (see auth.register); the seeded
 owner account is admin@eleanoranails.com.
 """
 
+import csv
+import io
 import re
 import secrets
 from datetime import datetime, date, timedelta
 from functools import wraps
 
 from flask import (Blueprint, render_template, redirect, url_for, request,
-                   flash, abort)
+                   flash, abort, Response)
 from flask_login import login_required, current_user
 from sqlalchemy import func
 
@@ -338,6 +340,35 @@ def review_payment(appointment_id):
 
     db.session.commit()
     return redirect(request.referrer or url_for("admin.appointments"))
+
+
+@admin_bp.route("/export/appointments.csv")
+@login_required
+@admin_required
+def export_appointments_csv():
+    """Every booking, newest first, for the owner's own records or an
+    accountant -- not a customer-facing feature."""
+    rows = (Appointment.query
+            .order_by(Appointment.booking_date.desc(),
+                     Appointment.booking_time.desc()).all())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["ID", "Customer", "Email", "Service", "Design", "Date",
+                     "Time", "Status", "Total (Rs.)", "Booked on"])
+    for appt in rows:
+        writer.writerow([
+            appt.id, appt.user.full_name, appt.user.email,
+            appt.service.service_name,
+            appt.design.design_name if appt.design else "",
+            appt.booking_date.isoformat(), appt.booking_time.strftime("%H:%M"),
+            appt.status, appt.total_price,
+            appt.created_at.strftime("%Y-%m-%d %H:%M"),
+        ])
+
+    filename = f"appointments-{date.today().isoformat()}.csv"
+    return Response(buf.getvalue(), mimetype="text/csv", headers={
+        "Content-Disposition": f"attachment; filename={filename}"})
 
 
 # ---------------------------------------------------------------- services
