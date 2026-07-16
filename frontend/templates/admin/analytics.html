@@ -13,6 +13,18 @@
 
 {% block admin_content %}
 
+<div class="spread" style="margin-bottom:24px">
+  <span></span>
+  <div class="row" style="gap:10px">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_appointments_csv') }}">
+      {{ icon.download() }} Appointments CSV
+    </a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_customers_csv') }}">
+      {{ icon.download() }} Customers CSV
+    </a>
+  </div>
+</div>
+
 <div class="grid grid-2" style="margin-bottom:30px">
   <!-- bookings per month -->
   <div class="card">

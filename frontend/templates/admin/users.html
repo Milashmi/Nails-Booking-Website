@@ -23,6 +23,9 @@
   {% if q %}
     <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">Clear</a>
   {% endif %}
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_customers_csv') }}">
+    {{ icon.download() }} Export CSV
+  </a>
 </form>
 
 <div class="table-wrap">

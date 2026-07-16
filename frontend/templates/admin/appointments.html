@@ -37,6 +37,13 @@
   </a>
 </div>
 
+<div class="spread" style="margin-bottom:16px">
+  <span></span>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_appointments_csv') }}">
+    {{ icon.download() }} Export CSV
+  </a>
+</div>
+
 {% if appointments %}
   {% for appt in appointments %}
     {{ admin_appointment(appt) }}
