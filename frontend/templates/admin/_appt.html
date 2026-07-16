@@ -30,7 +30,7 @@
 
           <div class="appt-tags">
             <span class="pill">{{ icon.user() }} {{ appt.user.full_name }}</span>
-            <span class="pill">{{ icon.phone() }} {{ appt.user.phone or ', ' }}</span>
+            <span class="pill">{{ icon.phone() }} {{ appt.user.phone or 'Not provided' }}</span>
             <span class="pill pill-rose">
               {{ icon.calendar() }}
               {{ appt.booking_date | nice_date }} · {{ appt.booking_time | clock }}
@@ -111,7 +111,7 @@
           </div>
 
           <p class="muted small" style="margin-top:5px">
-            Transaction code: <code>{{ pay.transaction_code or ', ' }}</code>
+            Transaction code: <code>{{ pay.transaction_code or 'Not provided' }}</code>
           </p>
 
           {#

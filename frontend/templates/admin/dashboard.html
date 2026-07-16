@@ -138,7 +138,7 @@
             <td>{{ appt.user.full_name }}</td>
             <td>{{ appt.service.service_name }}</td>
             <td class="muted">
-              {{ appt.design.design_name if appt.design else ', ' }}
+              {{ appt.design.design_name if appt.design else 'No design chosen' }}
             </td>
             <td><strong>{{ appt.total_price | rs }}</strong></td>
           </tr>

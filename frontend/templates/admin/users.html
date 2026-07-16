@@ -61,7 +61,7 @@
 
           <td>
             <div>{{ user.email }}</div>
-            <div class="muted small">{{ user.phone or ', ' }}</div>
+            <div class="muted small">{{ user.phone or 'Not provided' }}</div>
           </td>
 
           <td><strong>{{ counts.get(user.id, 0) }}</strong></td>
