@@ -223,3 +223,96 @@ class TestPromoCRUD:
         client.post(f"/admin/promos/{promo.id}/toggle")
         db.session.refresh(promo)
         assert promo.is_active is False
+
+
+class TestAnalytics:
+    def test_customer_gets_403(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        resp = client.get("/admin/analytics")
+        assert resp.status_code == 403
+
+    def test_admin_sees_the_analytics_page(self, client, admin_user):
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/analytics")
+        assert resp.status_code == 200
+        assert b"Top services" in resp.data
+        assert b"Most-picked designs" in resp.data
+
+    def test_completed_booking_shows_up_in_top_services(self, client, admin_user,
+                                                         customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() - timedelta(days=2), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="completed")
+        db.session.add(appt)
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/analytics")
+        assert catalogue["service"].service_name.encode() in resp.data
+        assert b"Rs. 3,000" in resp.data
+
+    def test_pending_booking_is_not_counted_as_revenue(self, client, admin_user,
+                                                        customer_user, catalogue):
+        """Only completed bookings count as earned revenue -- a pending one
+        hasn't been paid out in full and might still be cancelled."""
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today(), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending")
+        db.session.add(appt)
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/analytics")
+        # Nothing completed yet, so the top-services table should be empty.
+        assert b"Nothing completed yet" in resp.data
+
+
+class TestCsvExport:
+    def test_customer_gets_403_on_appointments_export(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        assert client.get("/admin/export/appointments.csv").status_code == 403
+
+    def test_customer_gets_403_on_customers_export(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        assert client.get("/admin/export/customers.csv").status_code == 403
+
+    def test_appointments_csv_has_expected_columns_and_rows(
+            self, client, admin_user, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending")
+        db.session.add(appt)
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/export/appointments.csv")
+        assert resp.status_code == 200
+        assert resp.headers["Content-Type"].startswith("text/csv")
+        assert "attachment" in resp.headers["Content-Disposition"]
+
+        lines = resp.data.decode().splitlines()
+        assert lines[0] == ("ID,Customer,Email,Service,Design,Date,Time,Status,"
+                            "Total (Rs.),Booked on")
+        assert any(customer_user.email in line for line in lines[1:])
+
+    def test_customers_csv_has_expected_columns_and_rows(self, client, admin_user,
+                                                          customer_user):
+        login(client, admin_user.email, "Admin@123")
+        resp = client.get("/admin/export/customers.csv")
+        assert resp.status_code == 200
+        assert resp.headers["Content-Type"].startswith("text/csv")
+
+        lines = resp.data.decode().splitlines()
+        assert lines[0] == "ID,Name,Email,Phone,Bookings,2FA enabled,Joined"
+        assert any(customer_user.email in line for line in lines[1:])
+        # The admin account itself is not a customer, so it must not appear.
+        assert not any(admin_user.email in line for line in lines[1:])
