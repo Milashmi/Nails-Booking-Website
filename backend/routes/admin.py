@@ -162,9 +162,26 @@ def analytics():
     top_designs = [{"name": name, "bookings": count}
                    for name, count in design_rows]
 
+    # Lifetime spend, not just this window -- a loyal customer should show up
+    # even in a month they didn't book anything.
+    customer_rows = (db.session.query(
+            User.full_name, User.email,
+            func.count(Appointment.id),
+            func.coalesce(func.sum(Appointment.total_price), 0))
+        .join(Appointment, Appointment.user_id == User.id)
+        .filter(Appointment.status == STATUS_COMPLETED)
+        .group_by(User.id, User.full_name, User.email)
+        .order_by(func.sum(Appointment.total_price).desc())
+        .limit(8)
+        .all())
+    top_customers = [{"name": name, "email": email, "bookings": count,
+                      "spend": int(spend)}
+                     for name, email, count, spend in customer_rows]
+
     return render_template("admin/analytics.html",
                            bookings_chart=bookings_chart,
                            revenue_chart=revenue_chart,
+                           top_customers=top_customers,
                            top_services=top_services,
                            top_designs=top_designs,
                            period=period, periods=ANALYTICS_PERIODS)
