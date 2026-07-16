@@ -508,6 +508,9 @@ there is no part of the site she has to ask a developer to change.
   the treatment that gets booked the most isn't always the one that earns
   the most
 - **Most-picked designs**, across every booking status
+- **Top customers**, ranked by lifetime completed spend rather than the
+  selected window — a loyal customer still shows up even in a period they
+  didn't book anything
 - **Export to CSV** — every appointment or every customer, one click, for
   the owner's own records or an accountant
 
