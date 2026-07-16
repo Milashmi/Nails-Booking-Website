@@ -1,0 +1,119 @@
+{% extends 'admin/_shell.html' %}
+{% import 'partials/icons.html' as icon %}
+
+{% block title %}Analytics · {{ salon.name }}{% endblock %}
+{% block admin_eyebrow %}Analytics{% endblock %}
+{% block admin_title %}How the business is actually doing{% endblock %}
+{% block admin_sub %}
+  <p class="lede">
+    Trends over the last six months, and which services and designs
+    actually earn their keep.
+  </p>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="grid grid-2" style="margin-bottom:30px">
+  <!-- bookings per month -->
+  <div class="card">
+    <span class="eyebrow">Last 6 months</span>
+    <h3 style="font-size:21px;margin:8px 0 4px">Bookings taken</h3>
+
+    {% set peak = bookings_chart | map(attribute='value') | max %}
+    <div class="chart">
+      {% for bar in bookings_chart %}
+        <div class="chart-bar" title="{{ bar.label }}: {{ bar.value }}">
+          <span class="bar"
+                style="height: {{ (bar.value / peak * 100) if peak else 2 }}%;
+                       animation-delay: {{ loop.index0 * 0.04 }}s"></span>
+          <span class="lbl">{{ bar.label.split(' ')[0] }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- revenue per month -->
+  <div class="card">
+    <span class="eyebrow">Last 6 months</span>
+    <h3 style="font-size:21px;margin:8px 0 4px">Revenue earned</h3>
+
+    {% set rpeak = revenue_chart | map(attribute='value') | max %}
+    <div class="chart">
+      {% for bar in revenue_chart %}
+        <div class="chart-bar" title="{{ bar.label }}: {{ bar.value | rs }}">
+          <span class="bar"
+                style="height: {{ (bar.value / rpeak * 100) if rpeak else 2 }}%;
+                       animation-delay: {{ loop.index0 * 0.04 }}s"></span>
+          <span class="lbl">{{ bar.label.split(' ')[0] }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <!-- top services by revenue -->
+  <div>
+    <div class="spread" style="margin-bottom:16px">
+      <h2 style="font-size:22px">Top services</h2>
+      <span class="muted small">by completed revenue</span>
+    </div>
+
+    {% if top_services %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Service</th><th>Bookings</th><th>Revenue</th></tr>
+          </thead>
+          <tbody>
+            {% for row in top_services %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.bookings }}</td>
+                <td><strong>{{ row.revenue | rs }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <h3>Nothing completed yet</h3>
+        <p class="muted">Revenue by service shows up once a set is marked completed.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- top designs by pick count -->
+  <div>
+    <div class="spread" style="margin-bottom:16px">
+      <h2 style="font-size:22px">Most-picked designs</h2>
+      <span class="muted small">any booking status</span>
+    </div>
+
+    {% if top_designs %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Design</th><th>Times booked</th></tr>
+          </thead>
+          <tbody>
+            {% for row in top_designs %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.bookings }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <h3>No bookings yet</h3>
+        <p class="muted">Once customers start booking, the favourites show up here.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
