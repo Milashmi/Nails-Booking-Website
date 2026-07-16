@@ -679,6 +679,34 @@ def delete_user(user_id):
     return redirect(url_for("admin.users"))
 
 
+@admin_bp.route("/export/customers.csv")
+@login_required
+@admin_required
+def export_customers_csv():
+    """Every customer account, for a mailing list or an accountant -- not a
+    feature customers themselves ever see."""
+    rows = (User.query.filter_by(role="customer")
+            .order_by(User.created_at.desc()).all())
+    counts = dict(db.session.query(Appointment.user_id,
+                                   func.count(Appointment.id))
+                  .group_by(Appointment.user_id).all())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["ID", "Name", "Email", "Phone", "Bookings",
+                     "2FA enabled", "Joined"])
+    for user in rows:
+        writer.writerow([
+            user.id, user.full_name, user.email, user.phone or "",
+            counts.get(user.id, 0), "Yes" if user.totp_enabled else "No",
+            user.created_at.strftime("%Y-%m-%d"),
+        ])
+
+    filename = f"customers-{date.today().isoformat()}.csv"
+    return Response(buf.getvalue(), mimetype="text/csv", headers={
+        "Content-Disposition": f"attachment; filename={filename}"})
+
+
 # ---------------------------------------------------------------- reviews
 
 @admin_bp.route("/reviews")
