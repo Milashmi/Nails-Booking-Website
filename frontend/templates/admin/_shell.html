@@ -14,6 +14,10 @@
          href="{{ url_for('admin.dashboard') }}">
         {{ icon.chart() }} Dashboard
       </a>
+      <a class="{{ 'active' if request.endpoint == 'admin.analytics' }}"
+         href="{{ url_for('admin.analytics') }}">
+        {{ icon.trendingUp() }} Analytics
+      </a>
       <a class="{{ 'active' if request.endpoint == 'admin.appointments' }}"
          href="{{ url_for('admin.appointments') }}">
         {{ icon.calendar() }} Appointments
