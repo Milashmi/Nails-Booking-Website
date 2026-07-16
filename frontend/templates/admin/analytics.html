@@ -14,7 +14,14 @@
 {% block admin_content %}
 
 <div class="spread" style="margin-bottom:24px">
-  <span></span>
+  <div class="filter-bar" style="margin:0">
+    {% for p in periods %}
+      <a class="chip {{ 'active' if period == p }}"
+         href="{{ url_for('admin.analytics', months=p) }}">
+        {{ p }} months
+      </a>
+    {% endfor %}
+  </div>
   <div class="row" style="gap:10px">
     <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_appointments_csv') }}">
       {{ icon.download() }} Appointments CSV
@@ -28,7 +35,7 @@
 <div class="grid grid-2" style="margin-bottom:30px">
   <!-- bookings per month -->
   <div class="card">
-    <span class="eyebrow">Last 6 months</span>
+    <span class="eyebrow">Last {{ period }} months</span>
     <h3 style="font-size:21px;margin:8px 0 4px">Bookings taken</h3>
 
     {% set peak = bookings_chart | map(attribute='value') | max %}
@@ -46,7 +53,7 @@
 
   <!-- revenue per month -->
   <div class="card">
-    <span class="eyebrow">Last 6 months</span>
+    <span class="eyebrow">Last {{ period }} months</span>
     <h3 style="font-size:21px;margin:8px 0 4px">Revenue earned</h3>
 
     {% set rpeak = revenue_chart | map(attribute='value') | max %}

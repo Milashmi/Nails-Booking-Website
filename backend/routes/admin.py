@@ -112,13 +112,19 @@ def _month_bounds(months_back):
     return bounds
 
 
+ANALYTICS_PERIODS = (3, 6, 12)
+
+
 @admin_bp.route("/analytics")
 @login_required
 @admin_required
 def analytics():
     """Revenue and booking trends, plus which services and designs actually
     earn their keep -- the numbers the owner cannot get from the diary view."""
-    months = _month_bounds(6)
+    period = request.args.get("months", type=int)
+    if period not in ANALYTICS_PERIODS:
+        period = 6
+    months = _month_bounds(period)
 
     bookings_chart, revenue_chart = [], []
     for start, end, label in months:
@@ -160,7 +166,8 @@ def analytics():
                            bookings_chart=bookings_chart,
                            revenue_chart=revenue_chart,
                            top_services=top_services,
-                           top_designs=top_designs)
+                           top_designs=top_designs,
+                           period=period, periods=ANALYTICS_PERIODS)
 
 
 # ------------------------------------------------------------ appointments
