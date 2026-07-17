@@ -225,6 +225,72 @@ class TestPromoCRUD:
         assert promo.is_active is False
 
 
+class TestDesignCRUD:
+    def test_admin_can_add_a_design(self, client, admin_user, catalogue):
+        login(client, admin_user.email, "Admin@123")
+        client.post("/admin/designs", data={
+            "design_name": "New Test Design", "category": "Floral",
+            "extra_price": "300", "service_id": str(catalogue["service"].id),
+            "image": fake_upload("design.png"),
+        }, content_type="multipart/form-data")
+
+        from models import Design
+        design = Design.query.filter_by(design_name="New Test Design").first()
+        assert design is not None
+        assert design.is_upload is True
+        assert design.category == "Floral"
+
+    def test_adding_a_design_without_an_image_is_refused(self, client, admin_user):
+        login(client, admin_user.email, "Admin@123")
+        client.post("/admin/designs", data={
+            "design_name": "No Image Design", "category": "Floral",
+        }, content_type="multipart/form-data")
+
+        from models import Design
+        assert Design.query.filter_by(design_name="No Image Design").first() is None
+
+    def test_admin_can_edit_a_design(self, client, admin_user, catalogue):
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/designs/{catalogue['design'].id}/edit", data={
+            "design_name": "Renamed Design", "category": "Luxury",
+            "extra_price": "500",
+        })
+        db.session.refresh(catalogue["design"])
+        assert catalogue["design"].design_name == "Renamed Design"
+        assert catalogue["design"].category == "Luxury"
+
+    def test_design_with_bookings_is_hidden_not_deleted(self, client, admin_user,
+                                                         customer_user, catalogue):
+        from datetime import date, timedelta, time
+        db.session.add(Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending"))
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/designs/{catalogue['design'].id}/delete")
+
+        from models import Design
+        design = db.session.get(Design, catalogue["design"].id)
+        assert design is not None
+        assert design.is_active is False
+
+    def test_design_without_bookings_is_deleted(self, client, admin_user,
+                                                catalogue):
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/designs/{catalogue['design'].id}/delete")
+
+        from models import Design
+        assert db.session.get(Design, catalogue["design"].id) is None
+
+    def test_customer_gets_403_on_designs_page(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        assert client.get("/admin/designs").status_code == 403
+
+
 class TestAnalytics:
     def test_customer_gets_403(self, client, customer_user):
         login(client, customer_user.email, "Password@123")
