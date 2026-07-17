@@ -44,6 +44,15 @@ from utils import (save_image, delete_upload, available_slots, open_dates,
 booking_bp = Blueprint("booking", __name__)
 
 
+def _get_or_none(model, id_value):
+    """db.session.get(), but tolerant of a missing id. Several lookups here
+    are for genuinely optional fields (secondary/accent colour, a design not
+    chosen yet on the live quote) -- calling .get() with None directly
+    triggers a SAWarning ('fully NULL primary key') that SQLAlchemy says may
+    become a hard error in a future release."""
+    return db.session.get(model, id_value) if id_value else None
+
+
 def _catalogue():
     """Everything the wizard needs to render its steps."""
     return {
@@ -93,14 +102,14 @@ def availability():
     ?service=<id>&date=<iso> -> the free start times on that date
     &exclude=<appointment id> -> ignore this booking's own slot (rescheduling)
     """
-    service = db.session.get(Service, request.args.get("service", type=int))
+    service = _get_or_none(Service, request.args.get("service", type=int))
     if not service:
         return jsonify({"error": "Unknown service."}), 400
 
     exclude_id = request.args.get("exclude", type=int)
     if exclude_id:
         # You may only reschedule around your own appointment.
-        own = db.session.get(Appointment, exclude_id)
+        own = _get_or_none(Appointment, exclude_id)
         if not own or (own.user_id != current_user.id and not current_user.is_admin):
             exclude_id = None
 
@@ -126,8 +135,8 @@ def availability():
 @login_required
 def quote():
     """Live price for the summary step, as the customer changes their picks."""
-    service = db.session.get(Service, request.args.get("service", type=int))
-    design = db.session.get(Design, request.args.get("design", type=int))
+    service = _get_or_none(Service, request.args.get("service", type=int))
+    design = _get_or_none(Design, request.args.get("design", type=int))
     length = request.args.get("length", "Short")
 
     if not service:
@@ -185,8 +194,8 @@ def create():
     """Validate the whole wizard server-side, then save the booking as pending."""
     form = request.form
 
-    service = db.session.get(Service, form.get("service_id", type=int))
-    design = db.session.get(Design, form.get("design_id", type=int))
+    service = _get_or_none(Service, form.get("service_id", type=int))
+    design = _get_or_none(Design, form.get("design_id", type=int))
     shape = form.get("nail_shape", "")
     length = form.get("nail_length", "")
     method = form.get("payment_method", "")
@@ -203,11 +212,11 @@ def create():
     if length not in NAIL_LENGTHS:
         errors.append("Please choose a nail length.")
 
-    base_color = db.session.get(Color, form.get("color_id", type=int))
+    base_color = _get_or_none(Color, form.get("color_id", type=int))
     if not base_color:
         errors.append("Please choose at least a base colour.")
-    secondary = db.session.get(Color, form.get("secondary_color_id", type=int))
-    accent = db.session.get(Color, form.get("accent_color_id", type=int))
+    secondary = _get_or_none(Color, form.get("secondary_color_id", type=int))
+    accent = _get_or_none(Color, form.get("accent_color_id", type=int))
 
     # ---- the slot ----
     booking_date = None
