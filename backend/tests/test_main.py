@@ -109,3 +109,19 @@ class TestGallery:
     def test_gallery_search_with_no_match_shows_nothing(self, client, catalogue):
         resp = client.get("/gallery", query_string={"q": "Nonexistent Design Xyz"})
         assert catalogue["design"].design_name.encode() not in resp.data
+
+
+class TestColors:
+    def test_colors_page_loads(self, client):
+        resp = client.get("/colors")
+        assert resp.status_code == 200
+
+    def test_colors_lists_active_color(self, client, catalogue):
+        resp = client.get("/colors")
+        assert catalogue["color"].color_name.encode() in resp.data
+
+    def test_colors_hides_inactive_color(self, client, catalogue):
+        catalogue["color"].is_active = False
+        db.session.commit()
+        resp = client.get("/colors")
+        assert catalogue["color"].color_name.encode() not in resp.data
