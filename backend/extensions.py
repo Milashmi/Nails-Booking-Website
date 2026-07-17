@@ -17,7 +17,13 @@ db = SQLAlchemy()
 
 # Per-IP rate limiter. Specific limits are declared on sensitive routes
 # (login, register, 2FA, booking, uploads) to slow down abuse.
-limiter = Limiter(key_func=get_remote_address, default_limits=[])
+# storage_uri is set explicitly to the same in-memory backend Flask-Limiter
+# already defaults to -- this only silences its "no storage specified"
+# warning, it does not change behaviour. A single-process dev server has
+# nowhere else to put it; a real multi-worker deployment would point this
+# at Redis instead.
+limiter = Limiter(key_func=get_remote_address, default_limits=[],
+                  storage_uri="memory://")
 
 # Handles the logged-in user session (current_user, login_required, etc).
 login_manager = LoginManager()
