@@ -249,6 +249,58 @@ class TestReschedule:
                           follow_redirects=True)
         assert b"24 hours" in resp.data
 
+    def test_cannot_reschedule_someone_elses_appointment(self, client,
+                                                          customer_user,
+                                                          catalogue):
+        from models import User
+        other = User(full_name="Other Person", email="reschedule-other@example.com")
+        other.set_password("Password@123")
+        db.session.add(other)
+        db.session.commit()
+
+        day = _future_weekday(offset=10)
+        appt = Appointment(
+            user_id=other.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short", booking_date=day,
+            booking_time=time(11, 0), duration=90, total_price=3000,
+            status=STATUS_APPROVED)
+        db.session.add(appt)
+        db.session.commit()
+
+        login(client, customer_user.email, "Password@123")
+        resp = client.get(f"/appointments/{appt.id}/reschedule")
+        assert resp.status_code == 403
+
+    def test_reschedule_refuses_a_slot_taken_in_the_meantime(self, client,
+                                                              customer_user,
+                                                              catalogue):
+        day = _future_weekday(offset=10)
+        mine = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short", booking_date=day,
+            booking_time=time(11, 0), duration=90, total_price=3000,
+            status=STATUS_APPROVED)
+        # Someone else already holds the slot I'm about to try to move into.
+        taken = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short", booking_date=day,
+            booking_time=time(14, 0), duration=90, total_price=3000,
+            status=STATUS_APPROVED)
+        db.session.add_all([mine, taken])
+        db.session.commit()
+
+        login(client, customer_user.email, "Password@123")
+        resp = client.post(f"/appointments/{mine.id}/reschedule", data={
+            "booking_date": day.isoformat(), "booking_time": "14:00",
+        }, follow_redirects=True)
+
+        assert b"just been taken" in resp.data
+        db.session.refresh(mine)
+        assert mine.booking_time == time(11, 0)   # unchanged
+
 
 class TestReviews:
     def test_can_review_a_completed_appointment(self, client, customer_user,
