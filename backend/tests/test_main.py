@@ -53,3 +53,23 @@ class TestAbout:
         resp = client.get("/about")
         assert resp.status_code == 200
         assert b'data-count="1">0</span>+' in resp.data
+
+
+class TestServices:
+    def test_services_page_loads(self, client):
+        resp = client.get("/services")
+        assert resp.status_code == 200
+
+    def test_services_lists_active_service(self, client, catalogue):
+        resp = client.get("/services")
+        assert catalogue["service"].service_name.encode() in resp.data
+
+    def test_services_hides_retired_service(self, client):
+        from models import Service
+        retired = Service(service_name="Zzz Retired Service", price=100,
+                          duration=30, is_active=False, sort_order=99)
+        db.session.add(retired)
+        db.session.commit()
+
+        resp = client.get("/services")
+        assert b"Zzz Retired Service" not in resp.data
