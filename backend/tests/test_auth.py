@@ -158,6 +158,34 @@ class TestProfile:
         db.session.refresh(customer_user)
         assert customer_user.full_name == "Sabina Updated"
 
+    def test_name_too_short_is_rejected(self, client, customer_user):
+        original = customer_user.full_name
+        login(client, customer_user.email, "Password@123")
+        client.post("/profile", data={"full_name": "Al", "phone": ""})
+        db.session.refresh(customer_user)
+        assert customer_user.full_name == original
+
+    def test_invalid_phone_is_rejected(self, client, customer_user):
+        original = customer_user.phone
+        login(client, customer_user.email, "Password@123")
+        client.post("/profile", data={"full_name": "Still Valid Name",
+                                      "phone": "not-a-phone-number"})
+        db.session.refresh(customer_user)
+        assert customer_user.phone == original
+
+    def test_avatar_upload_is_saved_with_a_random_name(self, client,
+                                                        customer_user):
+        from tests.conftest import fake_upload
+        login(client, customer_user.email, "Password@123")
+        client.post("/profile", data={
+            "full_name": customer_user.full_name, "phone": "",
+            "avatar": fake_upload("me.png"),
+        }, content_type="multipart/form-data")
+
+        db.session.refresh(customer_user)
+        assert customer_user.avatar is not None
+        assert customer_user.avatar != "me.png"
+
     def test_change_password_requires_correct_current_password(self, client,
                                                                 customer_user):
         login(client, customer_user.email, "Password@123")
