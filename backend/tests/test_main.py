@@ -73,3 +73,39 @@ class TestServices:
 
         resp = client.get("/services")
         assert b"Zzz Retired Service" not in resp.data
+
+
+class TestGallery:
+    def test_gallery_page_loads(self, client):
+        resp = client.get("/gallery")
+        assert resp.status_code == 200
+
+    def test_gallery_lists_active_design(self, client, catalogue):
+        resp = client.get("/gallery")
+        assert catalogue["design"].design_name.encode() in resp.data
+
+    def test_gallery_hides_inactive_design(self, client, catalogue):
+        catalogue["design"].is_active = False
+        db.session.commit()
+        resp = client.get("/gallery")
+        assert catalogue["design"].design_name.encode() not in resp.data
+
+    def test_gallery_filters_by_category(self, client, catalogue):
+        from models import Design
+        other = Design(design_name="Other Category Design", category="Marble",
+                       image="x.jpg", extra_price=0,
+                       service_id=catalogue["service"].id)
+        db.session.add(other)
+        db.session.commit()
+
+        resp = client.get("/gallery", query_string={"category": "French"})
+        assert catalogue["design"].design_name.encode() in resp.data
+        assert b"Other Category Design" not in resp.data
+
+    def test_gallery_search_matches_by_name(self, client, catalogue):
+        resp = client.get("/gallery", query_string={"q": "Gold Line"})
+        assert catalogue["design"].design_name.encode() in resp.data
+
+    def test_gallery_search_with_no_match_shows_nothing(self, client, catalogue):
+        resp = client.get("/gallery", query_string={"q": "Nonexistent Design Xyz"})
+        assert catalogue["design"].design_name.encode() not in resp.data
