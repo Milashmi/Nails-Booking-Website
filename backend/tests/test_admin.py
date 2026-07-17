@@ -6,7 +6,7 @@ workflow, slot-holding on approval, and a sample of the CRUD screens.
 from datetime import date, timedelta, time
 
 from extensions import db
-from models import (Appointment, Payment, Service, Color, PromoCode,
+from models import (Appointment, Payment, Service, Color, Review, PromoCode,
                     STATUS_PENDING, STATUS_APPROVED)
 from tests.conftest import login, fake_upload
 from utils import available_slots
@@ -289,6 +289,61 @@ class TestDesignCRUD:
     def test_customer_gets_403_on_designs_page(self, client, customer_user):
         login(client, customer_user.email, "Password@123")
         assert client.get("/admin/designs").status_code == 403
+
+
+class TestReviewModeration:
+    def _review(self, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() - timedelta(days=2), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="completed")
+        db.session.add(appt)
+        db.session.flush()
+        review = Review(user_id=customer_user.id, appointment_id=appt.id,
+                        rating=5, comment="Loved it", is_visible=True)
+        db.session.add(review)
+        db.session.commit()
+        return review
+
+    def test_admin_can_hide_a_review(self, client, admin_user, customer_user,
+                                     catalogue):
+        review = self._review(customer_user, catalogue)
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/reviews/{review.id}/toggle")
+
+        db.session.refresh(review)
+        assert review.is_visible is False
+
+    def test_toggling_twice_shows_it_again(self, client, admin_user,
+                                           customer_user, catalogue):
+        review = self._review(customer_user, catalogue)
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/reviews/{review.id}/toggle")
+        client.post(f"/admin/reviews/{review.id}/toggle")
+
+        db.session.refresh(review)
+        assert review.is_visible is True
+
+    def test_admin_can_delete_a_review(self, client, admin_user, customer_user,
+                                       catalogue):
+        review = self._review(customer_user, catalogue)
+        review_id = review.id
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/reviews/{review_id}/delete")
+
+        assert db.session.get(Review, review_id) is None
+
+    def test_customer_gets_403_on_review_moderation(self, client, customer_user,
+                                                     catalogue):
+        review = self._review(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        resp = client.post(f"/admin/reviews/{review.id}/toggle")
+        assert resp.status_code == 403
 
 
 class TestAnalytics:
