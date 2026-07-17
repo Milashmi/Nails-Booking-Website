@@ -148,6 +148,21 @@ class TestApprovalAndSlotHolding:
         assert appt.status == "cancelled"
         assert appt.payment.refund_due == 500   # the WHOLE advance, not half
 
+    def test_admin_can_mark_a_booking_completed(self, client, admin_user,
+                                                customer_user, catalogue):
+        appt = _pending_appt(customer_user, catalogue)
+        appt.status = STATUS_APPROVED
+        appt.payment.status = "verified"
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/appointments/{appt.id}/complete")
+
+        db.session.refresh(appt)
+        assert appt.status == "completed"
+        assert appt.payment.status == "settled"
+        assert appt.payment.balance == 0
+
 
 class TestServiceCRUD:
     def test_admin_can_add_a_service(self, client, admin_user):
@@ -218,6 +233,12 @@ class TestColorCRUD:
         db.session.refresh(catalogue["color"])
         assert catalogue["color"].is_active is False
 
+    def test_admin_can_delete_a_color(self, client, admin_user, catalogue):
+        color_id = catalogue["color"].id
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/colors/{color_id}/delete")
+        assert db.session.get(Color, color_id) is None
+
 
 class TestScheduleAndBlockedDates:
     def test_admin_can_close_a_date(self, client, admin_user):
@@ -227,6 +248,20 @@ class TestScheduleAndBlockedDates:
         client.post("/admin/schedule", data={"date": day.isoformat(),
                                               "reason": "Family event"})
         assert not is_studio_open(day)
+
+    def test_admin_can_reopen_a_closed_date(self, client, admin_user):
+        from models import BlockedDate
+        from utils import is_studio_open
+        day = _future_weekday()
+        blocked = BlockedDate(date=day, reason="Family event")
+        db.session.add(blocked)
+        db.session.commit()
+        blocked_id = blocked.id
+        assert not is_studio_open(day)
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/schedule/{blocked_id}/delete")
+        assert is_studio_open(day)
 
 
 class TestPromoCRUD:
