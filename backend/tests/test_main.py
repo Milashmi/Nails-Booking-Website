@@ -32,3 +32,24 @@ class TestHome:
     def test_home_shows_stats(self, client):
         resp = client.get("/")
         assert b"designs" in resp.data.lower() or b"clients" in resp.data.lower()
+
+
+class TestAbout:
+    def test_about_page_loads(self, client):
+        resp = client.get("/about")
+        assert resp.status_code == 200
+
+    def test_about_reflects_completed_bookings_count(self, client, customer_user,
+                                                      catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() - timedelta(days=1), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="completed")
+        db.session.add(appt)
+        db.session.commit()
+
+        resp = client.get("/about")
+        assert resp.status_code == 200
+        assert b'data-count="1">0</span>+' in resp.data
