@@ -176,6 +176,30 @@ class TestServiceCRUD:
         client.post(f"/admin/services/{catalogue['service'].id}/delete")
         assert db.session.get(Service, catalogue["service"].id) is None
 
+    def test_admin_can_edit_a_service(self, client, admin_user, catalogue):
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/services/{catalogue['service'].id}/edit", data={
+            "service_name": "Renamed Service", "price": "3500",
+            "duration": "100", "description": "Updated description.",
+        })
+        db.session.refresh(catalogue["service"])
+        assert catalogue["service"].service_name == "Renamed Service"
+        assert catalogue["service"].price == 3500
+        assert catalogue["service"].duration == 100
+
+    def test_editing_a_service_without_is_active_field_retires_it(
+            self, client, admin_user, catalogue):
+        """Matches the checkbox-omitted-means-unchecked pattern used across
+        every other admin edit form (colours, designs)."""
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/services/{catalogue['service'].id}/edit", data={
+            "service_name": catalogue["service"].service_name,
+            "price": str(catalogue["service"].price),
+            "duration": str(catalogue["service"].duration),
+        })
+        db.session.refresh(catalogue["service"])
+        assert catalogue["service"].is_active is False
+
 
 class TestColorCRUD:
     def test_admin_can_add_a_color(self, client, admin_user):
