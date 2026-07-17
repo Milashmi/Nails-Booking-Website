@@ -125,3 +125,41 @@ class TestColors:
         db.session.commit()
         resp = client.get("/colors")
         assert catalogue["color"].color_name.encode() not in resp.data
+
+
+class TestReviews:
+    def _appt(self, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() - timedelta(days=2), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="completed")
+        db.session.add(appt)
+        db.session.flush()
+        return appt
+
+    def test_reviews_page_loads(self, client):
+        resp = client.get("/reviews")
+        assert resp.status_code == 200
+
+    def test_reviews_shows_a_visible_review(self, client, customer_user, catalogue):
+        appt = self._appt(customer_user, catalogue)
+        db.session.add(Review(user_id=customer_user.id, appointment_id=appt.id,
+                              rating=5, comment="Absolutely loved my set!",
+                              is_visible=True))
+        db.session.commit()
+
+        resp = client.get("/reviews")
+        assert b"Absolutely loved my set" in resp.data
+
+    def test_reviews_hides_an_invisible_review(self, client, customer_user,
+                                               catalogue):
+        appt = self._appt(customer_user, catalogue)
+        db.session.add(Review(user_id=customer_user.id, appointment_id=appt.id,
+                              rating=5, comment="Hidden from the public site",
+                              is_visible=False))
+        db.session.commit()
+
+        resp = client.get("/reviews")
+        assert b"Hidden from the public site" not in resp.data
