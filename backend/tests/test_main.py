@@ -163,3 +163,31 @@ class TestReviews:
 
         resp = client.get("/reviews")
         assert b"Hidden from the public site" not in resp.data
+
+
+class TestContact:
+    def test_contact_page_loads(self, client):
+        resp = client.get("/contact")
+        assert resp.status_code == 200
+
+    def test_valid_message_is_accepted(self, client):
+        resp = client.post("/contact", data={
+            "name": "Test Visitor", "email": "visitor@example.com",
+            "message": "This message is long enough to pass validation.",
+        }, follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"Thank you" in resp.data
+
+    def test_short_message_is_rejected(self, client):
+        resp = client.post("/contact", data={
+            "name": "Test Visitor", "email": "visitor@example.com",
+            "message": "Too short",
+        })
+        assert b"at least" in resp.data
+
+    def test_missing_name_is_rejected(self, client):
+        resp = client.post("/contact", data={
+            "name": "", "email": "visitor@example.com",
+            "message": "This message is long enough to pass validation.",
+        })
+        assert b"at least" in resp.data or b"Please fill in" in resp.data
