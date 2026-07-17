@@ -11,9 +11,12 @@ import pytest
 from extensions import db
 from models import (Appointment, BlockedDate, PromoCode, Payment,
                     STATUS_APPROVED, STATUS_PENDING)
+import pyotp
+
 from utils import (is_studio_open, available_slots, open_dates, slot_is_free,
                    quote_price, find_promo, refund_due, allowed_file,
-                   save_image)
+                   save_image, new_totp_secret, totp_uri, verify_totp,
+                   screenshot_already_used)
 
 
 @pytest.fixture
@@ -207,3 +210,100 @@ class TestUploadSafety:
         assert saved_name is not None
         assert saved_name != "my-photo.png"   # original name discarded
         assert saved_name.endswith(".png")
+
+
+class TestTotpHelpers:
+    def test_new_secret_is_valid_base32(self, app):
+        secret = new_totp_secret()
+        # A valid base32 secret round-trips through pyotp without raising,
+        # and two calls must not hand out the same secret.
+        pyotp.TOTP(secret).now()
+        assert new_totp_secret() != secret
+
+    def test_totp_uri_contains_issuer_and_label(self, app):
+        secret = new_totp_secret()
+        uri = totp_uri(secret, "someone@example.com")
+        assert uri.startswith("otpauth://totp/")
+        assert "someone%40example.com" in uri or "someone@example.com" in uri
+        assert "Eleanora" in uri   # TOTP_ISSUER from config
+
+    def test_correct_code_verifies(self, app):
+        secret = new_totp_secret()
+        code = pyotp.TOTP(secret).now()
+        assert verify_totp(secret, code) is True
+
+    def test_wrong_code_is_refused(self, app):
+        secret = new_totp_secret()
+        real_code = pyotp.TOTP(secret).now()
+        wrong_code = "000000" if real_code != "000000" else "111111"
+        assert verify_totp(secret, wrong_code) is False
+
+    def test_empty_secret_or_code_is_refused(self, app):
+        assert verify_totp("", "123456") is False
+        assert verify_totp(new_totp_secret(), "") is False
+        assert verify_totp(None, None) is False
+
+
+class TestScreenshotReuse:
+    def test_a_file_that_does_not_exist_is_not_flagged_as_used(self, app):
+        assert screenshot_already_used("does-not-exist.png") is False
+
+    def test_same_bytes_on_a_live_booking_are_flagged(self, app, catalogue,
+                                                       customer_user):
+        import io
+        from PIL import Image
+        from utils import save_image
+        from werkzeug.datastructures import FileStorage
+        from models import Appointment, Payment, STATUS_APPROVED
+
+        buf = io.BytesIO()
+        Image.new("RGB", (10, 10), (10, 20, 30)).save(buf, format="PNG")
+        buf.seek(0)
+        saved_name = save_image(FileStorage(stream=buf, filename="r.png",
+                                            content_type="image/png"))
+
+        from datetime import date, timedelta, time
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status=STATUS_APPROVED)
+        db.session.add(appt)
+        db.session.flush()
+        db.session.add(Payment(appointment_id=appt.id, method="advance",
+                               amount=500, screenshot=saved_name,
+                               status="verified"))
+        db.session.commit()
+
+        assert screenshot_already_used(saved_name) is True
+
+    def test_receipt_on_a_cancelled_booking_is_free_again(self, app, catalogue,
+                                                           customer_user):
+        import io
+        from PIL import Image
+        from utils import save_image
+        from werkzeug.datastructures import FileStorage
+        from models import Appointment, Payment, STATUS_CANCELLED
+        from datetime import date, timedelta, time
+
+        buf = io.BytesIO()
+        Image.new("RGB", (10, 10), (40, 50, 60)).save(buf, format="PNG")
+        buf.seek(0)
+        saved_name = save_image(FileStorage(stream=buf, filename="r2.png",
+                                            content_type="image/png"))
+
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status=STATUS_CANCELLED)
+        db.session.add(appt)
+        db.session.flush()
+        db.session.add(Payment(appointment_id=appt.id, method="advance",
+                               amount=500, screenshot=saved_name,
+                               status="verified"))
+        db.session.commit()
+
+        assert screenshot_already_used(saved_name) is False
