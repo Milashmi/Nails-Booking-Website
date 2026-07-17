@@ -248,6 +248,69 @@ class TestPromoCRUD:
         db.session.refresh(promo)
         assert promo.is_active is False
 
+    def test_unused_promo_is_deleted(self, client, admin_user):
+        promo = PromoCode(code="NEVERUSED", kind="flat", value=100)
+        db.session.add(promo)
+        db.session.commit()
+        promo_id = promo.id
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/promos/{promo_id}/delete")
+        assert db.session.get(PromoCode, promo_id) is None
+
+    def test_used_promo_is_deactivated_not_deleted(self, client, admin_user):
+        promo = PromoCode(code="ALREADYUSED", kind="flat", value=100,
+                          used_count=3)
+        db.session.add(promo)
+        db.session.commit()
+        promo_id = promo.id
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/promos/{promo_id}/delete")
+
+        promo = db.session.get(PromoCode, promo_id)
+        assert promo is not None
+        assert promo.is_active is False
+
+
+class TestCustomerManagement:
+    def test_admin_can_delete_a_customer(self, client, admin_user, customer_user):
+        customer_id = customer_user.id
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/users/{customer_id}/delete")
+
+        from models import User
+        assert db.session.get(User, customer_id) is None
+
+    def test_admin_cannot_delete_their_own_account(self, client, admin_user):
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/users/{admin_user.id}/delete")
+
+        from models import User
+        assert db.session.get(User, admin_user.id) is not None
+
+    def test_deleting_a_customer_removes_their_appointments(
+            self, client, admin_user, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() + timedelta(days=5), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending")
+        db.session.add(appt)
+        db.session.commit()
+        appt_id = appt.id
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/users/{customer_user.id}/delete")
+
+        assert db.session.get(Appointment, appt_id) is None
+
+    def test_customer_gets_403_on_delete_user(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        resp = client.post(f"/admin/users/{customer_user.id}/delete")
+        assert resp.status_code == 403
+
 
 class TestDesignCRUD:
     def test_admin_can_add_a_design(self, client, admin_user, catalogue):
