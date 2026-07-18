@@ -384,3 +384,88 @@ class TestReviews:
         resp = client.post(f"/appointments/{appt.id}/review",
                           data={"rating": "5", "comment": "Not mine to review"})
         assert resp.status_code == 403
+
+
+class TestResendPayment:
+    """The /pay route: used when the admin rejects a screenshot and the
+    client needs to send a clearer one."""
+
+    def _rejected_appt(self, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=_future_weekday(), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="pending")
+        db.session.add(appt)
+        db.session.flush()
+        payment = Payment(appointment_id=appt.id, method="advance", amount=500,
+                          balance=2500, status="rejected",
+                          transaction_code="ESWOLDCODE")
+        db.session.add(payment)
+        db.session.commit()
+        return appt
+
+    def test_missing_transaction_code_is_rejected(self, client, customer_user,
+                                                   catalogue):
+        appt = self._rejected_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/pay", data={
+            "transaction_code": "", "screenshot": fake_upload(),
+        }, content_type="multipart/form-data")
+
+        db.session.refresh(appt.payment)
+        assert appt.payment.status == "rejected"   # unchanged
+
+    def test_missing_screenshot_is_rejected(self, client, customer_user,
+                                            catalogue):
+        appt = self._rejected_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/pay",
+                   data={"transaction_code": "ESWNEWCODE123"})
+
+        db.session.refresh(appt.payment)
+        assert appt.payment.status == "rejected"   # unchanged
+
+    def test_valid_resend_puts_payment_back_in_the_queue(self, client,
+                                                          customer_user,
+                                                          catalogue):
+        appt = self._rejected_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/pay", data={
+            "transaction_code": "ESWNEWCODE123", "screenshot": fake_upload(),
+        }, content_type="multipart/form-data")
+
+        db.session.refresh(appt.payment)
+        assert appt.payment.status == "pending"
+        assert appt.payment.transaction_code == "ESWNEWCODE123"
+
+    def test_resend_on_a_closed_appointment_is_refused(self, client,
+                                                        customer_user, catalogue):
+        appt = self._rejected_appt(customer_user, catalogue)
+        appt.status = "completed"
+        db.session.commit()
+
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/pay", data={
+            "transaction_code": "ESWNEWCODE123", "screenshot": fake_upload(),
+        }, content_type="multipart/form-data")
+
+        db.session.refresh(appt.payment)
+        assert appt.payment.status == "rejected"   # unchanged
+
+    def test_cannot_resend_payment_for_someone_elses_appointment(self, client,
+                                                                  customer_user,
+                                                                  catalogue):
+        from models import User
+        other = User(full_name="Other Person", email="pay-other@example.com")
+        other.set_password("Password@123")
+        db.session.add(other)
+        db.session.commit()
+
+        appt = self._rejected_appt(other, catalogue)
+        login(client, customer_user.email, "Password@123")
+        resp = client.post(f"/appointments/{appt.id}/pay", data={
+            "transaction_code": "ESWNEWCODE123", "screenshot": fake_upload(),
+        }, content_type="multipart/form-data")
+        assert resp.status_code == 403
