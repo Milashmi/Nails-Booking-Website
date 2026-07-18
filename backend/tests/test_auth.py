@@ -59,6 +59,24 @@ class TestRegister:
         client.post("/register", data=bad, follow_redirects=True)
         assert User.query.filter_by(email="not-an-email").first() is None
 
+    def test_invalid_phone_rejected(self, client):
+        bad = dict(REG_FORM, phone="not-a-phone")
+        client.post("/register", data=bad, follow_redirects=True)
+        assert User.query.filter_by(email="sabina.karki@example.com").first() is None
+
+    def test_duplicate_email_is_case_insensitive(self, client):
+        client.post("/register", data=REG_FORM, follow_redirects=True)
+        shouting = dict(REG_FORM, email="SABINA.KARKI@EXAMPLE.COM")
+        resp = client.post("/register", data=shouting, follow_redirects=True)
+        assert User.query.filter_by(email="sabina.karki@example.com").count() == 1
+        assert b"already exists" in resp.data
+
+    def test_logged_in_user_is_redirected_away_from_register(self, client,
+                                                              customer_user):
+        login(client, customer_user.email, "Password@123")
+        resp = client.get("/register")
+        assert resp.status_code in (302, 308)
+
 
 class TestLogin:
     def test_correct_credentials_log_in(self, client, customer_user):
