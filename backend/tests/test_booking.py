@@ -338,3 +338,49 @@ class TestReviews:
                    data={"rating": "5", "comment": "Too soon"},
                    follow_redirects=True)
         assert Review.query.filter_by(appointment_id=appt.id).first() is None
+
+    def _completed_appt(self, customer_user, catalogue):
+        appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=date.today() - timedelta(days=2), booking_time=time(11, 0),
+            duration=90, total_price=3000, status="completed")
+        db.session.add(appt)
+        db.session.commit()
+        return appt
+
+    def test_out_of_range_rating_is_rejected(self, client, customer_user,
+                                             catalogue):
+        appt = self._completed_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/review",
+                   data={"rating": "6", "comment": "Too many stars"})
+        assert Review.query.filter_by(appointment_id=appt.id).first() is None
+
+    def test_cannot_review_the_same_appointment_twice(self, client, customer_user,
+                                                       catalogue):
+        appt = self._completed_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/review",
+                   data={"rating": "5", "comment": "First review"})
+        client.post(f"/appointments/{appt.id}/review",
+                   data={"rating": "1", "comment": "Trying to overwrite it"})
+
+        reviews = Review.query.filter_by(appointment_id=appt.id).all()
+        assert len(reviews) == 1
+        assert reviews[0].rating == 5   # the second attempt did not go through
+
+    def test_cannot_review_someone_elses_appointment(self, client, customer_user,
+                                                      catalogue):
+        from models import User
+        other = User(full_name="Other Person", email="review-other@example.com")
+        other.set_password("Password@123")
+        db.session.add(other)
+        db.session.commit()
+
+        appt = self._completed_appt(other, catalogue)
+        login(client, customer_user.email, "Password@123")
+        resp = client.post(f"/appointments/{appt.id}/review",
+                          data={"rating": "5", "comment": "Not mine to review"})
+        assert resp.status_code == 403
