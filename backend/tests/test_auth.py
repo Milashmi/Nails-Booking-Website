@@ -107,6 +107,36 @@ class TestLogin:
         assert resp.status_code in (302, 308)   # redirected to login
 
 
+class TestOpenRedirectGuard:
+    """The 'next' param after login must only ever point somewhere on this
+    site -- otherwise a crafted login link could send a user on to an
+    attacker's page right after they authenticate."""
+
+    def test_a_local_next_path_is_honoured(self, client, customer_user):
+        resp = client.post("/login?next=/appointments", data={
+            "email": customer_user.email, "password": "Password@123",
+        })
+        assert resp.status_code == 302
+        assert resp.headers["Location"] == "/appointments"
+
+    def test_a_protocol_relative_next_is_rejected(self, client, customer_user):
+        """'//evil.com' has no scheme, but browsers treat it as an absolute
+        URL to a different host -- startswith('/') alone would wrongly let
+        it through."""
+        resp = client.post("/login?next=//evil.com", data={
+            "email": customer_user.email, "password": "Password@123",
+        })
+        assert resp.status_code == 302
+        assert "evil.com" not in resp.headers["Location"]
+
+    def test_an_absolute_external_next_is_rejected(self, client, customer_user):
+        resp = client.post("/login?next=http://evil.com/phish", data={
+            "email": customer_user.email, "password": "Password@123",
+        })
+        assert resp.status_code == 302
+        assert "evil.com" not in resp.headers["Location"]
+
+
 class TestTwoFactor:
     def _enable_2fa(self, client, user):
         """Log in, then walk through the setup flow, returning the raw secret."""
