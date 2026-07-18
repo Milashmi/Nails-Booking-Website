@@ -469,3 +469,37 @@ class TestResendPayment:
             "transaction_code": "ESWNEWCODE123", "screenshot": fake_upload(),
         }, content_type="multipart/form-data")
         assert resp.status_code == 403
+
+    def test_resend_refuses_a_receipt_already_used_elsewhere(self, client,
+                                                              customer_user,
+                                                              catalogue):
+        import io
+        # A second, live booking already has this exact image as its receipt.
+        shared_bytes = fake_upload()[0].getvalue()
+        other_appt = Appointment(
+            user_id=customer_user.id, service_id=catalogue["service"].id,
+            design_id=catalogue["design"].id, color_id=catalogue["color"].id,
+            nail_shape="Almond", nail_length="Short",
+            booking_date=_future_weekday(offset=12), booking_time=time(13, 0),
+            duration=90, total_price=3000, status="approved")
+        db.session.add(other_appt)
+        db.session.flush()
+        from utils import save_image
+        from werkzeug.datastructures import FileStorage
+        saved_name = save_image(FileStorage(
+            stream=io.BytesIO(shared_bytes), filename="shared.png",
+            content_type="image/png"))
+        db.session.add(Payment(appointment_id=other_appt.id, method="advance",
+                               amount=500, screenshot=saved_name,
+                               status="verified"))
+        db.session.commit()
+
+        appt = self._rejected_appt(customer_user, catalogue)
+        login(client, customer_user.email, "Password@123")
+        client.post(f"/appointments/{appt.id}/pay", data={
+            "transaction_code": "ESWNEWCODE123",
+            "screenshot": (io.BytesIO(shared_bytes), "reused.png"),
+        }, content_type="multipart/form-data")
+
+        db.session.refresh(appt.payment)
+        assert appt.payment.status == "rejected"   # unchanged, resend refused
