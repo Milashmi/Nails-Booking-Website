@@ -183,6 +183,23 @@ class TestTwoFactor:
         resp = client.post("/login/2fa", data={"code": "000000"})
         assert b"not correct" in resp.data
 
+    def test_setup_page_refuses_when_already_enabled(self, client, customer_user):
+        self._enable_2fa(client, customer_user)
+        resp = client.get("/profile/2fa/setup", follow_redirects=True)
+        assert b"already switched on" in resp.data
+
+    def test_setup_locks_out_after_six_wrong_codes(self, client, customer_user):
+        login(client, customer_user.email, "Password@123")
+        client.get("/profile/2fa/setup")
+        for _ in range(6):
+            client.post("/profile/2fa/setup", data={"code": "000000"})
+
+        resp = client.post("/profile/2fa/setup", data={"code": "000000"},
+                          follow_redirects=True)
+        assert b"Too many incorrect codes" in resp.data
+        db.session.refresh(customer_user)
+        assert customer_user.totp_enabled is False
+
     def test_disable_requires_current_password(self, client, customer_user):
         self._enable_2fa(client, customer_user)
         client.post("/profile/2fa/disable", data={"password": "WrongPassword"})
