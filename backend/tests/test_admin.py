@@ -133,6 +133,36 @@ class TestApprovalAndSlotHolding:
                                             kind="rejected").first()
         assert note is not None
 
+    def test_verify_payment_without_approving(self, client, admin_user,
+                                              customer_user, catalogue):
+        appt = _pending_appt(customer_user, catalogue)
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/appointments/{appt.id}/payment",
+                   data={"decision": "verify"})
+
+        db.session.refresh(appt)
+        assert appt.payment.status == "verified"
+        assert appt.status == "pending"   # still waiting on a separate approve
+
+    def test_mark_refunded_notifies_client(self, client, admin_user,
+                                           customer_user, catalogue):
+        from models import Notification
+        appt = _pending_appt(customer_user, catalogue)
+        appt.status = STATUS_APPROVED
+        appt.payment.status = "verified"
+        appt.payment.refund_due = 250
+        db.session.commit()
+
+        login(client, admin_user.email, "Admin@123")
+        client.post(f"/admin/appointments/{appt.id}/payment",
+                   data={"decision": "refunded"})
+
+        db.session.refresh(appt)
+        assert appt.payment.refund_paid is True
+        note = Notification.query.filter_by(user_id=customer_user.id,
+                                            kind="refund").first()
+        assert note is not None
+
     def test_studio_cancel_refunds_the_whole_advance(self, client, admin_user,
                                                       customer_user, catalogue):
         appt = _pending_appt(customer_user, catalogue)
